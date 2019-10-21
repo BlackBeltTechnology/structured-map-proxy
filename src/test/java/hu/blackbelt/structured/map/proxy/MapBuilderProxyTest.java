@@ -1,7 +1,7 @@
 package hu.blackbelt.structured.map.proxy;
 
-import hu.blackbelt.judo.framework.lang.entity.User;
-import hu.blackbelt.judo.framework.lang.entity.UserBuilder;
+import hu.blackbelt.structured.map.proxy.entity.User;
+import hu.blackbelt.structured.map.proxy.entity.UserBuilder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

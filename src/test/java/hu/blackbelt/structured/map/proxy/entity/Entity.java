@@ -1,4 +1,4 @@
-package hu.blackbelt.judo.framework.lang.entity;
+package hu.blackbelt.structured.map.proxy.entity;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
