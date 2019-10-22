@@ -1,5 +1,6 @@
 package hu.blackbelt.structured.map.proxy;
 
+import com.google.common.base.Functions;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 
 import java.lang.reflect.InvocationHandler;
@@ -50,9 +51,11 @@ public final class MapProxy implements InvocationHandler {
 
     public Object invoke(Object proxy, Method m, Object[] args)
             throws Throwable {
-        if ("equals".equals(m.getName())) {
+        if ("hashCode".equals(m.getName())) {
+            return proxy.toString().hashCode();
+        } else if ("equals".equals(m.getName())) {
             Object obj = args[0];
-            if (obj == proxy) {
+            if (obj == proxy || obj.toString().equals(proxy.toString())) {
                 return true;
             } else if (obj != null && (proxy.getClass().isInstance(obj) || obj.getClass().isInstance(proxy))) {
                 Method getId = ReflectionUtil.findGetter(obj.getClass(), ID);
@@ -74,23 +77,15 @@ public final class MapProxy implements InvocationHandler {
                 Type genericReturnType = m.getGenericReturnType();
                 if (genericReturnType instanceof ParameterizedType) {
                     final Class collectionReturnType = (Class)((ParameterizedType) genericReturnType).getActualTypeArguments()[0];
-                    final Function transformMapToProxyFunction = tranformMapToProxy(collectionReturnType, immutable)
+                    final Function transformMapToProxyFunction = tranformMapToProxy(collectionReturnType, immutable);
 
                     // Check return type is interface
                     if (collectionReturnType.isInterface()
                             && !Map.class.isAssignableFrom(collectionReturnType)) {
-                        Collector collector;
-                        if (List.class.isAssignableFrom(returnType)) {
-                            collector = Collectors.toList();
-                        } else if (Set.class.isAssignableFrom(returnType)) {
-                            collector = Collectors.toSet();
-                        } else {
-                            collector = Collectors.toList();
-                        }
                         Object ret = ((Collection) value).stream()
                                 .map(transformToValueMapFunction)
                                 .map(transformMapToProxyFunction)
-                                .collect(collector);
+                                .collect(getCollectionCollectorForType(returnType));
 
                         if (!immutable) {
                             if (List.class.isAssignableFrom(returnType)) {
@@ -115,20 +110,21 @@ public final class MapProxy implements InvocationHandler {
                     Class mapKeyType = (Class)((ParameterizedType) genericReturnType).getActualTypeArguments()[0];
                     Class mapValueType = (Class)((ParameterizedType) genericReturnType).getActualTypeArguments()[1];
 
-                    Function keyMapper = Function.identity();
-                    Function valueMapper = Function.identity();
+                    Function keyMapper = extractKey();
+                    Function valueMapper = extractValue();
 
                     if (mapKeyType.isInterface()) {
-                        keyMapper = transformToValueMapFunction.andThen(tranformMapToProxy(mapKeyType, immutable));
+                        keyMapper =  extractKey().andThen(transformToValueMapFunction.andThen(tranformMapToProxy(mapKeyType, immutable)));
                     }
                     if (mapValueType.isInterface()) {
-                        valueMapper = transformToValueMapFunction.andThen(tranformMapToProxy(mapKeyType, immutable));
+                        valueMapper = extractValue().andThen(transformToValueMapFunction.andThen(tranformMapToProxy(mapValueType, immutable)));
                     }
 
                     Object ret = ((Map) value).entrySet().stream().collect(Collectors.toMap(keyMapper, valueMapper));
                     if (!immutable) {
                         return new HashMap<>((Map) ret);
                     }
+                    return ret;
                 } else {
                     return value;
                 }
@@ -161,7 +157,7 @@ public final class MapProxy implements InvocationHandler {
     }
 
     private Function tranformMapToProxy(Class type, Boolean immutable) {
-        return (o) -> MapProxy.newInstance(type, (Map<String, Object>) o, immutable);
+        return (o) -> MapProxy.newInstance(type, (Map) o, immutable);
     }
 
     private Collector getCollectionCollectorForType(Class type) {
@@ -172,18 +168,12 @@ public final class MapProxy implements InvocationHandler {
         return collector;
     }
 
-    private Collector getMapCollectorForType(Class type, ) {
-        Collector collector = null;
-        if (Collection.class.isAssignableFrom(type)) {
-            if (List.class.isAssignableFrom(type)) {
-                collector = Collectors.toList();
-            } else if (Set.class.isAssignableFrom(type)) {
-                collector = Collectors.toSet();
-            } else {
-                collector = Collectors.toList();
-            }
-        }
-        return collector;
+    private Function extractKey() {
+        return (o) -> ((Map.Entry) o).getKey();
+    }
+
+    private Function extractValue() {
+        return (o) -> ((Map.Entry) o).getValue();
     }
 
 }

@@ -28,9 +28,9 @@ public interface UserBuilder {
     UserBuilder userDetails(Collection<UserDetail> userDetails);
     UserBuilder collectionWithoutType(Collection collectionWithoutType);
     UserBuilder collectionWithMapType(Collection<Map<String, Object>> collectionWithMapType);
-    UserBuilder setMapWithoutType(Map withoutType);
-    UserBuilder setMapWithValueType(Map<String, UserDetail> mapWithValueType);
-    UserBuilder setMapWithValueTypeAndKeyType(Map<String, UserDetail> mapWithValueTypeAndKeyType);
+    UserBuilder mapWithoutType(Map withoutType);
+    UserBuilder mapWithValueType(Map<String, UserDetail> mapWithValueType);
+    UserBuilder mapWithValueTypeAndKeyType(Map<UserDetail, UserDetail> mapWithValueTypeAndKeyType);
 
     User build();
 }

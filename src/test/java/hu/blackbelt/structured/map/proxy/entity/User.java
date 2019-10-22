@@ -47,13 +47,13 @@ public interface User extends Entity {
     Collection<Map<String, Object>> getCollectionWithMapType();
     void setCollectionWithMapType(Collection<Map<String, Object>> collectionWithMapType);
 
-    Map getStringMapWithoutType();
+    Map getMapWithoutType();
     void setMapWithoutType(Map map);
 
     Map<String, UserDetail> getMapWithValueType();
     void setMapWithValueType(Map<String, UserDetail> stringMapWithValueType);
 
     Map<UserDetail, UserDetail> getMapWithValueTypeAndKeyType();
-    void setMapWithValueTypeAndKeyType(Map<String, UserDetail> mapWithValueTypeAndKeyType);
+    void setMapWithValueTypeAndKeyType(Map<UserDetail, UserDetail> mapWithValueTypeAndKeyType);
 
 }
