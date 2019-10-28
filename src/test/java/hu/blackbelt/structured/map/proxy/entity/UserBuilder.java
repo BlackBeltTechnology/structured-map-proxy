@@ -1,7 +1,9 @@
-package hu.blackbelt.judo.framework.lang.entity;
+package hu.blackbelt.structured.map.proxy.entity;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Map;
 
 public interface UserBuilder {
     UserBuilder xmiid(String par);
@@ -23,5 +25,12 @@ public interface UserBuilder {
     UserBuilder id(Serializable id);
     UserBuilder emptyConfigs();
     UserBuilder userInfoId(Serializable id);
+    UserBuilder userDetails(Collection<UserDetail> userDetails);
+    UserBuilder collectionWithoutType(Collection collectionWithoutType);
+    UserBuilder collectionWithMapType(Collection<Map<String, Object>> collectionWithMapType);
+    UserBuilder mapWithoutType(Map withoutType);
+    UserBuilder mapWithValueType(Map<String, UserDetail> mapWithValueType);
+    UserBuilder mapWithValueTypeAndKeyType(Map<UserDetail, UserDetail> mapWithValueTypeAndKeyType);
+
     User build();
 }
