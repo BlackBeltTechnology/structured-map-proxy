@@ -1,22 +1,18 @@
 package hu.blackbelt.structured.map.proxy.util;
 
-import com.google.common.collect.FluentIterable;
 import lombok.Getter;
 import lombok.Setter;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import static hu.blackbelt.structured.map.proxy.util.ReflectionUtil.findNonStaticFields;
 import static hu.blackbelt.structured.map.proxy.util.ReflectionUtil.getFieldValue;
 import static hu.blackbelt.structured.map.proxy.util.ReflectionUtil.methodParameterType;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,19 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ReflectionUtilTest {
 
     @Test
-    public void testFindNonStaticFields() throws NoSuchFieldException {
-        assertArrayEquals(new Field[]{T1.class.getDeclaredField("test")},
-                FluentIterable.from(findNonStaticFields(T1.class)).toArray(Field.class));
-    }
-
-    @Test
     public void testFindGetter() throws NoSuchMethodException {
         assertEquals(T1.class.getDeclaredMethod("getTest"), ReflectionUtil.findGetter(T1.class, "test"));
-    }
-
-    @Test
-    public void testFindStaticFinal() throws NoSuchFieldException {
-        assertEquals(T3.class.getDeclaredField("TEST"), ReflectionUtil.findFinalField(T3.class, "TEST"));
     }
 
     @Test
