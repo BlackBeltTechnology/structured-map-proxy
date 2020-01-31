@@ -58,6 +58,11 @@
         <system>GitHub Issues</system>
     </issueManagement>
 
+    <issueManagement>
+        <url>https://github.com/${project-repositoryId}/issues</url>
+        <system>GitHub Issues</system>
+    </issueManagement>
+
     <scm>
         <connection>scm:git:git@github.com:${project-repositoryId}.git</connection>
         <developerConnection>scm:git:ssh://${git.username}@github.com:${project-repositoryId}.git
