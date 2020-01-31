@@ -1,6 +1,8 @@
-package hu.blackbelt.judo.framework.lang.entity;
+package hu.blackbelt.structured.map.proxy.entity;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Map;
 
 public interface User extends Entity {
     Boolean getActive();
@@ -35,4 +37,23 @@ public interface User extends Entity {
     void setSms(String sms);
     String getXmiid();
     void setXmiid(String xmiid);
+
+    Collection<UserDetail> getUserDetails();
+    void setUserDetails(Collection<UserDetail> userDetails);
+
+    Collection getCollectionWithoutType();
+    void setCollectionWithoutType(Collection collectionWithoutType);
+
+    Collection<Map<String, Object>> getCollectionWithMapType();
+    void setCollectionWithMapType(Collection<Map<String, Object>> collectionWithMapType);
+
+    Map getMapWithoutType();
+    void setMapWithoutType(Map map);
+
+    Map<String, UserDetail> getMapWithValueType();
+    void setMapWithValueType(Map<String, UserDetail> stringMapWithValueType);
+
+    Map<UserDetail, UserDetail> getMapWithValueTypeAndKeyType();
+    void setMapWithValueTypeAndKeyType(Map<UserDetail, UserDetail> mapWithValueTypeAndKeyType);
+
 }

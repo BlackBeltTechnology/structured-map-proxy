@@ -2,7 +2,6 @@ package hu.blackbelt.structured.map.proxy.util;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -15,8 +14,6 @@ import static com.google.common.base.CaseFormat.LOWER_CAMEL;
 import static com.google.common.base.CaseFormat.UPPER_CAMEL;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Predicates.and;
-import static com.google.common.base.Predicates.not;
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.lang.String.format;
@@ -28,9 +25,6 @@ public final class ReflectionUtil {
 
     private static final String GET_PREFIX = "get";
     private static final String SET_PREFIX = "set";
-
-    public static final String JUDO_FIELD_PREFIX = "$judo";
-    public static final String META_FIELD_NAME = JUDO_FIELD_PREFIX + "$meta";
 
     private static final Predicate<Field> STATIC = new Predicate<Field>() {
         @Override
@@ -46,53 +40,7 @@ public final class ReflectionUtil {
         }
     };
 
-    private static final Predicate<Field> JUDO_META = new Predicate<Field>() {
-
-        @Override
-        public boolean apply(Field input) {
-            return input.getName().startsWith(JUDO_FIELD_PREFIX);
-        }
-    };
-
     private ReflectionUtil() {
-    }
-
-
-    public static Field findNonStaticField(Class<?> cl, final String field) {
-        return Iterables.find(findNonStaticFields(cl), new Predicate<Field>() {
-            @Override
-            public boolean apply(Field input) {
-                return input.getName().equals(field);
-            }
-        });
-    }
-
-    public static Field findFinalField(Class<?> cl, final String field) {
-        return Iterables.find(findFinalFields(cl), new Predicate<Field>() {
-            @Override
-            public boolean apply(Field input) {
-                return input.getName().equals(field);
-            }
-        });
-    }
-
-    /**
-     * <p>
-     * Finds the input class fields including the fields defined in superclass.
-     * </p>
-     * <p>
-     * The method will return all fields regardless its visibility except the ones starting with {@link #JUDO_FIELD_PREFIX}
-     * </p>
-     *
-     * @param cl
-     * @return
-     */
-    public static Iterable<Field> findNonStaticFields(Class<?> cl) {
-        return queryFields(cl, and(not(STATIC), not(JUDO_META)));
-    }
-
-    public static Iterable<Field> findFinalFields(Class<?> cl) {
-        return queryFields(cl, and(FINAL, not(JUDO_META)));
     }
 
 
@@ -189,13 +137,6 @@ public final class ReflectionUtil {
             }
         };
     }
-
-    public static Object getNonStaticFieldValue(Object target, String fieldName) {
-        checkNotNull(target);
-        return getFieldValue(target, findNonStaticField(target.getClass(), fieldName));
-    }
-
-
     public static Object getFieldValue(Object target, Field field) {
         try {
             boolean state = field.isAccessible();
