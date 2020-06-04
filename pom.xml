@@ -339,7 +339,7 @@
                     <obrRepository>NONE</obrRepository>
                     <instructions>
                         <Export-Package>
-                            hu.blackbelt.judo.tatami.core.*;version=${project.version}
+                            hu.blackbelt.structured.map.proxy.*;version=${project.version}
                         </Export-Package>
 
                         <Import-Package>
