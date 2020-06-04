@@ -1,8 +1,6 @@
 package hu.blackbelt.structured.map.proxy;
 
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
-import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
-
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -77,7 +75,7 @@ public final class MapProxy implements InvocationHandler {
                         throw new IllegalArgumentException("The attribute " + attrName
                                 + " in " + clazz.getName() + " have to be collection");
                     }
-                    if (genericReturnType instanceof ParameterizedTypeImpl) {
+                    if (genericReturnType instanceof ParameterizedType) {
                         final Class collectionReturnType = getRawType((ParameterizedType) genericReturnType, 0);
 
                         // Check return type is interface
@@ -223,8 +221,8 @@ public final class MapProxy implements InvocationHandler {
 
     private static Class getRawType(ParameterizedType parameterizedType, int argnum) {
         Type collectionGenericType = parameterizedType.getActualTypeArguments()[argnum];
-        if (collectionGenericType instanceof ParameterizedTypeImpl) {
-            return ((ParameterizedTypeImpl) collectionGenericType).getRawType();
+        if (collectionGenericType instanceof ParameterizedType) {
+            return (Class) ((ParameterizedType) collectionGenericType).getRawType();
         } else {
             return (Class) parameterizedType.getActualTypeArguments()[argnum];
         }
