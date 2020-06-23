@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.allOf;
@@ -54,12 +55,12 @@ public class MapProxyTest {
 
     }
 
-    private void performStrucuralTestCases() {
+    private void performStructuralTestCases() {
         assertEquals("teszt", user.getLoginName());
-        assertEquals("teszt", getMapValue(user,  "loginName", String.class));
+        assertEquals("teszt", getMapValue(user, "loginName", String.class));
 
         assertEquals("1", user.getId());
-        assertEquals("1", getMapValue(user,  "id", String.class));
+        assertEquals("1", getMapValue(user, "id", String.class));
 
         assertEquals("Note1", user.getUserDetails().iterator().next().getNote());
         assertEquals("Note1", ((Map<String, Object>) getMapValue(user, "userDetails", Collection.class).
@@ -105,60 +106,60 @@ public class MapProxyTest {
         user.setMapWithoutType(ImmutableMap.of("k1", "v1"));
         user.setMapWithValueType(ImmutableMap.of("k1", userDetail3));
         user.setMapWithValueTypeAndKeyType(ImmutableMap.of(userDetail4, userDetail5));
-        performStrucuralTestCases();
+        performStructuralTestCases();
     }
 
     @Test
     public void testBuildFromMap() {
-        Map<String, Object> prepared =
-                ImmutableMap.<String, Object>builder()
-                    .put("active", true)
-                    .put("id", "1")
-                    .put("loginName", "teszt")
-                    .put("userDetails", ImmutableList.of(ImmutableMap.of("id", "1", "note", "Note1")))
-                    .put("collectionWithoutType", ImmutableList.of("Test1", "Test2"))
-                    .put("collectionWithMapType", ImmutableList.of(
-                            ImmutableMap.of("k1", "v1"),
-                            ImmutableMap.of("k2", "v2"))
-                    )
-                    .put("mapWithoutType", ImmutableMap.of("k1", "v1"))
-                    .put("mapWithValueType", ImmutableMap.of("k1",
-                            ImmutableMap.of("id", "3", "note", "Note3"))
-                    )
-                    .put("mapWithValueTypeAndKeyType", ImmutableMap.of(
-                            ImmutableMap.of("id", "4", "note", "Note4"),
-                            ImmutableMap.of("id", "5", "note", "Note5"))
-                    )
-                    .build();
-
+        Map<String, Object> prepared = new HashMap<>();
+        prepared.put("active", true);
+        prepared.put("id", "1");
+        prepared.put("loginName", "teszt");
+        prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("id", "1", "note", "Note1")));
+        prepared.put("collectionWithoutType", ImmutableList.of("Test1", "Test2"));
+        prepared.put("collectionWithMapType", ImmutableList.of(
+                ImmutableMap.of("k1", "v1"),
+                ImmutableMap.of("k2", "v2"))
+        );
+        prepared.put("mapWithoutType", ImmutableMap.of("k1", "v1"));
+        prepared.put("mapWithValueType", ImmutableMap.of("k1",
+                ImmutableMap.of("id", "3", "note", "Note3"))
+        );
+        prepared.put("mapWithValueTypeAndKeyType", ImmutableMap.of(
+                ImmutableMap.of("id", "4", "note", "Note4"),
+                ImmutableMap.of("id", "5", "note", "Note5"))
+        );
+        prepared.put("simpleUserDetail", null);
+        prepared.put("sms", null);
         user = MapProxy.newInstance(User.class, prepared, true, "id");
-        performStrucuralTestCases();
+        performStructuralTestCases();
     }
 
     @Test
     public void testToString() {
-        Map<String, Object> prepared =
-                ImmutableMap.<String, Object>builder()
-                        .put("active", true)
-                        .put("id", "1")
-                        .put("loginName", "teszt")
-                        .put("userDetails", ImmutableList.of(
-                                ImmutableMap.of("id", "1", "note", "Note1"),
-                                ImmutableMap.of("id", "2", "note", "Note2"))
-                        )
-                        .put("collectionWithoutType", ImmutableList.of("Test1", "Test2"))
-                        .put("collectionWithMapType", ImmutableList.of(
-                                ImmutableMap.of("k1", "v1"),
-                                ImmutableMap.of("k2", "v2"))
-                        )
-                        .put("mapWithoutType", ImmutableMap.of("k1", "v1"))
-                        .put("mapWithValueType", ImmutableMap.of("k1",
-                                ImmutableMap.of("id", "3", "note", "Note3")))
-                        .put("mapWithValueTypeAndKeyType", ImmutableMap.of(
-                                ImmutableMap.of("id", "4", "note", "Note4"),
-                                ImmutableMap.of("id", "5", "note", "Note5"))
-                        )
-                        .build();
+        Map<String, Object> prepared = new HashMap<>();
+
+        prepared.put("active", true);
+        prepared.put("id", "1");
+        prepared.put("loginName", "teszt");
+        prepared.put("userDetails", ImmutableList.of(
+                ImmutableMap.of("id", "1", "note", "Note1"),
+                ImmutableMap.of("id", "2", "note", "Note2"))
+        );
+        prepared.put("collectionWithoutType", ImmutableList.of("Test1", "Test2"));
+        prepared.put("collectionWithMapType", ImmutableList.of(
+                ImmutableMap.of("k1", "v1"),
+                ImmutableMap.of("k2", "v2"))
+                        );
+        prepared.put("mapWithoutType", ImmutableMap.of("k1", "v1"));
+        prepared.put("mapWithValueType", ImmutableMap.of("k1",
+                ImmutableMap.of("id", "3", "note", "Note3")));
+        prepared.put("mapWithValueTypeAndKeyType", ImmutableMap.of(
+                ImmutableMap.of("id", "4", "note", "Note4"),
+                ImmutableMap.of("id", "5", "note", "Note5"))
+        );
+        prepared.put("sms", null);
+        prepared.put("singleUserDetail", null);
 
         user = MapProxy.newInstance(User.class, prepared, true, "id");
         assertEquals(
@@ -171,6 +172,8 @@ public class MapProxyTest {
                         "mapWithValueType={k1=PROXY{id=3, note=Note3}}, " +
                         "mapWithValueTypeAndKeyType={PROXY{id=4, note=Note4}=PROXY{id=5, note=Note5}}, " +
                         "mapWithoutType={k1=v1}, " +
+                        "singleUserDetail=null, " +
+                        "sms=null, " +
                         "userDetails=[PROXY{id=1, note=Note1}, PROXY{id=2, note=Note2}]" +
                         "}",
                 user.toString());
@@ -209,10 +212,10 @@ public class MapProxyTest {
         assertThat(map.get("active"), is(true));
         assertThat(map.get("id"), is("1"));
         assertThat(map.get("loginName"), is("teszt"));
-        assertThat((Iterable<Map<String, Object>>) map.get("userDetails"),  allOf(
+        assertThat((Iterable<Map<String, Object>>) map.get("userDetails"), allOf(
                 contains(
-                        hasEntry(is("id"),is("1")),
-                        hasEntry(is("id"),is("2")))
+                        hasEntry(is("id"), is("1")),
+                        hasEntry(is("id"), is("2")))
         ));
         assertThat((Iterable<String>) map.get("collectionWithoutType"), contains("Test1", "Test2"));
         assertThat((Iterable<Map<?, ?>>) map.get("collectionWithMapType"),
@@ -226,7 +229,7 @@ public class MapProxyTest {
                 hasEntry(is("k1"), allOf(
                         hasEntry(is("id"), is("3")),
                         hasEntry(is("note"), is("Note3"))
-        )));
+                )));
 
     }
 
@@ -299,7 +302,7 @@ public class MapProxyTest {
         assertFalse(user2.equals(user1));
     }
 
-    <T> T getMapValue(Object input, Object key, Class<T> target ) {
+    <T> T getMapValue(Object input, Object key, Class<T> target) {
         return (T) ((MapHolder) input).toMap().get(key);
     }
 }
