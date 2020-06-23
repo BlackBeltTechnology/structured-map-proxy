@@ -38,6 +38,9 @@ public interface User extends Entity {
     String getXmiid();
     void setXmiid(String xmiid);
 
+    UserDetail getSingleUserDetail();
+    void setSingleUserDetail(UserDetail userDetail);
+
     Collection<UserDetail> getUserDetails();
     void setUserDetails(Collection<UserDetail> userDetails);
 

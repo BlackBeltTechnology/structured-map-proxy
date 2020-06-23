@@ -26,6 +26,7 @@ public interface UserBuilderWithPrefix {
     UserBuilderWithPrefix withEmptyConfigs();
     UserBuilderWithPrefix withUserInfoId(Serializable id);
     UserBuilderWithPrefix withUserDetails(Collection<UserDetail> userDetails);
+    UserBuilderWithPrefix withSingleUserDetail(UserDetail userDetail);
     UserBuilderWithPrefix withCollectionWithoutType(Collection collectionWithoutType);
     UserBuilderWithPrefix withCollectionWithMapType(Collection<Map<String, Object>> collectionWithMapType);
     UserBuilderWithPrefix withMapWithoutType(Map withoutType);
