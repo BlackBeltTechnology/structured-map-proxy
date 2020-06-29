@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>hu.blackbelt</groupId>
     <artifactId>structured-map-proxy</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4-SNAPSHOT</version>
     <packaging>bundle</packaging>
 
     <name>Structured map proxy</name>
