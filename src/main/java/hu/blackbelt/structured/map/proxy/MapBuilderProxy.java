@@ -12,15 +12,22 @@ public final class MapBuilderProxy implements InvocationHandler {
     String prefix;
 
     public static <T, B> T newInstance(Class<T> builderClass, Class<B> targetClass, String builderMethodPrefix) {
+        return newInstance(builderClass, MapProxy.newInstance(targetClass), builderMethodPrefix);
+    }
 
+    public static <T, B> T newInstance(Class<T> builderClass, B targetInstance, String builderMethodPrefix) {
         return (T) java.lang.reflect.Proxy.newProxyInstance(
                 builderClass.getClassLoader(),
                 new Class[] { builderClass },
-                new MapBuilderProxy(MapProxy.newInstance(targetClass), builderMethodPrefix));
+                new MapBuilderProxy(targetInstance, builderMethodPrefix));
     }
 
     public static <T, B> T newInstance(Class<T> builderClass, Class<B> targetClass) {
         return newInstance(builderClass, targetClass, null);
+    }
+
+    public static <T, B> T newInstance(Class<T> builderClass,  B targetInstance) {
+        return newInstance(builderClass, targetInstance, null);
     }
 
     private MapBuilderProxy(Object target, String builderMethodPrefix) {
