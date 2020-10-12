@@ -59,4 +59,8 @@ public interface User extends Entity {
     Map<UserDetail, UserDetail> getMapWithValueTypeAndKeyType();
     void setMapWithValueTypeAndKeyType(Map<UserDetail, UserDetail> mapWithValueTypeAndKeyType);
 
+    Country getCountry();
+
+    void setCountry(Country country);
+
 }

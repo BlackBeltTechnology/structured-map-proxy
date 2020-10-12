@@ -5,10 +5,7 @@ import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collector;
@@ -20,6 +17,15 @@ public final class MapProxy implements InvocationHandler {
     public static final String GET = "get";
     public static final String IS = "is";
 
+    public static final String DEFAULT_ENUM_MAPPING_METHOD = "name";
+
+    private Map<String, ?> original;
+    private Map<String, Object> internal;
+    private boolean immutable = true;
+    private String identifierField = null;
+    private Class clazz;
+    private final String enumMappingMethod;
+
 
     public static <T> T newImmutableInstance(Class<T> clazz) {
         return newInstance(clazz, Collections.emptyMap(), true, null);
@@ -30,29 +36,29 @@ public final class MapProxy implements InvocationHandler {
     }
 
     public static <T> T newInstance(Class<T> clazz, Map<String, ?> map, boolean immutable, String identifierField) {
+        return newInstance(clazz, map, immutable, identifierField, DEFAULT_ENUM_MAPPING_METHOD);
+    }
+
+    public static <T> T newInstance(Class<T> clazz, Map<String, ?> map, boolean immutable, String identifierField, String enumMappingMethod) {
         try {
             return (T) java.lang.reflect.Proxy.newProxyInstance(
                     new CompositeClassLoader(clazz.getClassLoader(), MapHolder.class.getClassLoader()),
                     new Class[]{clazz, MapHolder.class},
-                    new MapProxy(clazz, map, immutable, identifierField));
+                    new MapProxy(clazz, map, immutable, identifierField, enumMappingMethod));
         } catch (IntrospectionException e) {
             throw new IllegalArgumentException("Could not create instance", e);
         }
     }
 
 
-    private Map<String, ?> original;
-    private Map<String, Object> internal;
-    private boolean immutable = true;
-    private String identifierField = null;
-    private Class clazz;
 
-    private <T> MapProxy(Class<T> sourceClass, Map<String, ?> map, boolean immutable, String identifierField) throws IntrospectionException {
+    private <T> MapProxy(Class<T> sourceClass, Map<String, ?> map, boolean immutable, String identifierField, String enumMappingMethod) throws IntrospectionException {
         original = map;
         internal = new HashMap<>(map);
         this.identifierField = identifierField;
         this.immutable = immutable;
         this.clazz = sourceClass;
+        this.enumMappingMethod = enumMappingMethod;
 
         for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(sourceClass).getPropertyDescriptors()) {
             String attrName = propertyDescriptor.getName();
@@ -75,12 +81,37 @@ public final class MapProxy implements InvocationHandler {
                     }
                 } else if (returnType.isAssignableFrom(value.getClass())) {
                     internal.put(attrName, value);
+                } else if (returnType.isEnum()) {
+                    internal.put(attrName, createEnumValue(value, returnType));
                 } else {
-                    throw new IllegalArgumentException("Could not assigng " + value.getClass()
+                    throw new IllegalArgumentException("Could not assign " + value.getClass()
                             + " to " + sourceClass.getName() + "." + attrName);
                 }
             }
         }
+    }
+
+    private Object createEnumValue(Object value, Class returnType) {
+        Enum enumValue = null;
+        if (enumMappingMethod.equals("name")) {
+            enumValue = Enum.valueOf(returnType, (String) value);
+        } else {
+            for (Object enumConstant : returnType.getEnumConstants()) {
+                try {
+                    Object enumAttributeValue = returnType.getMethod(enumMappingMethod).invoke(enumConstant);
+                    if (value.equals(enumAttributeValue)) {
+                        enumValue = (Enum) enumConstant;
+                        break;
+                    }
+                } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                    enumValue = null;
+                }
+            }
+            if (enumValue == null) {
+                throw new IllegalArgumentException(String.format("Enumeration couldn't be resolved: %s.%s via method %s()", returnType, value, enumMappingMethod));
+            }
+        }
+        return enumValue;
     }
 
     private Map createMapValue(Map value, Type genericReturnType, boolean immutable, String identifierField) {
@@ -222,7 +253,7 @@ public final class MapProxy implements InvocationHandler {
         }
     }
 
-    private static Function<Object, Object> objectToMapFunction() {
+    private Function<Object, Object> objectToMapFunction() {
         return (o) -> {
             if (o instanceof MapHolder) {
                 return ((MapHolder) o).toMap();
@@ -240,6 +271,12 @@ public final class MapProxy implements InvocationHandler {
                         return v;
                     }
                 }).collect(Collectors.toList());
+            } else if (o instanceof Enum) {
+                try {
+                    return ((Enum)o).getClass().getMethod(enumMappingMethod).invoke(o);
+                } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                    throw new IllegalArgumentException(e);
+                }
             } else {
                 return o;
             }
