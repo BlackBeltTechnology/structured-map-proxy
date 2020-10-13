@@ -2,6 +2,7 @@ package hu.blackbelt.structured.map.proxy;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import hu.blackbelt.structured.map.proxy.entity.Country;
 import hu.blackbelt.structured.map.proxy.entity.User;
 import hu.blackbelt.structured.map.proxy.entity.UserDetail;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,24 +33,24 @@ public class MapProxyTest {
 
     @BeforeEach
     public void before() {
-        user = MapProxy.newInstance(User.class);
-        userDetail1 = MapProxy.newInstance(UserDetail.class);
+        user = MapProxy.builder(User.class).newInstance();
+        userDetail1 = MapProxy.builder(UserDetail.class).newInstance();
         userDetail1.setId("1");
         userDetail1.setNote("Note1");
 
-        userDetail2 = MapProxy.newInstance(UserDetail.class);
+        userDetail2 = MapProxy.builder(UserDetail.class).newInstance();
         userDetail2.setId("2");
         userDetail2.setNote("Note2");
 
-        userDetail3 = MapProxy.newInstance(UserDetail.class);
+        userDetail3 = MapProxy.builder(UserDetail.class).newInstance();
         userDetail3.setId("3");
         userDetail3.setNote("Note3");
 
-        userDetail4 = MapProxy.newInstance(UserDetail.class);
+        userDetail4 = MapProxy.builder(UserDetail.class).newInstance();
         userDetail4.setId("4");
         userDetail4.setNote("Note4");
 
-        userDetail5 = MapProxy.newInstance(UserDetail.class);
+        userDetail5 = MapProxy.builder(UserDetail.class).newInstance();
         userDetail5.setId("5");
         userDetail5.setNote("Note5");
 
@@ -89,6 +90,8 @@ public class MapProxyTest {
                 .get(userDetail4), "id", String.class));
         assertEquals("5", ((Map) getMapValue(user, "mapWithValueTypeAndKeyType", Map.class)
                 .get(((MapHolder) userDetail4).toMap())).get("id"));
+
+        assertThat(user.getCountry().getName(), is("Austria"));
     }
 
     @Test
@@ -96,6 +99,7 @@ public class MapProxyTest {
         user.setActive(true);
         user.setLoginName("teszt");
         user.setId("1");
+        user.setCountry(Country.AT);
 
         user.setUserDetails(ImmutableList.of(userDetail1, userDetail2));
         user.setCollectionWithoutType(ImmutableList.of("Test1", "Test2"));
@@ -107,6 +111,11 @@ public class MapProxyTest {
         user.setMapWithValueType(ImmutableMap.of("k1", userDetail3));
         user.setMapWithValueTypeAndKeyType(ImmutableMap.of(userDetail4, userDetail5));
         performStructuralTestCases();
+    }
+
+    @Test
+    public void testEnum() {
+        user.setCountry(Country.HU);
     }
 
     @Test
@@ -131,7 +140,12 @@ public class MapProxyTest {
         );
         prepared.put("simpleUserDetail", null);
         prepared.put("sms", null);
-        user = MapProxy.newInstance(User.class, prepared, true, "id");
+        prepared.put("country", 3);
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(true)
+                .withIdentifierField("id")
+                .withEnumMappingMethod("getOrdinal").newInstance();
         performStructuralTestCases();
     }
 
@@ -161,7 +175,7 @@ public class MapProxyTest {
         prepared.put("sms", null);
         prepared.put("singleUserDetail", null);
 
-        user = MapProxy.newInstance(User.class, prepared, true, "id");
+        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").newInstance();
         assertEquals(
                 "PROXY{" +
                         "active=true, " +
@@ -204,9 +218,10 @@ public class MapProxyTest {
                                         ImmutableMap.of("id", "5", "note", "Note5")
                                 )
                         )
+                        .put("country", 3)
                         .build();
 
-        user = MapProxy.newInstance(User.class, prepared, true, "id");
+        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").withEnumMappingMethod("getOrdinal").newInstance();
 
         Map map = ((MapHolder) user).toMap();
         assertThat(map.get("active"), is(true));
@@ -231,6 +246,7 @@ public class MapProxyTest {
                         hasEntry(is("note"), is("Note3"))
                 )));
 
+        assertThat(map.get("country"), is(3));
     }
 
     @Test
@@ -253,8 +269,8 @@ public class MapProxyTest {
                         .put("id", "1")
                         .build();
 
-        User user1 = MapProxy.newInstance(User.class, prepared1, true, "id");
-        User user2 = MapProxy.newInstance(User.class, prepared2, true, "id");
+        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).withIdentifierField("id").newInstance();
+        User user2 = MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).withIdentifierField("id").newInstance();
 
         assertTrue(user1.equals(user2));
         assertTrue(user2.equals(user1));
@@ -274,8 +290,8 @@ public class MapProxyTest {
                         .put("id", "1")
                         .build();
 
-        User user1 = MapProxy.newInstance(User.class, prepared1, true, "id");
-        User user2 = MapProxy.newInstance(User.class, prepared2, true, "id");
+        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).withIdentifierField("id").newInstance();
+        User user2 =MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).withIdentifierField("id").newInstance();
 
         assertTrue(user1.equals(user2));
         assertTrue(user2.equals(user1));
@@ -295,8 +311,8 @@ public class MapProxyTest {
                         .put("id", "1")
                         .build();
 
-        User user1 = MapProxy.newInstance(User.class, prepared1, true, null);
-        User user2 = MapProxy.newInstance(User.class, prepared2, true, null);
+        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).newInstance();;
+        User user2 = MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).newInstance();;
 
         assertFalse(user1.equals(user2));
         assertFalse(user2.equals(user1));
