@@ -5,29 +5,59 @@ import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.Collections;
 
 public final class MapBuilderProxy implements InvocationHandler {
 
     Object internal;
     String prefix;
 
-    public static <T, B> T newInstance(Class<T> builderClass, Class<B> targetClass, String builderMethodPrefix) {
-        return newInstance(builderClass, MapProxy.newInstance(targetClass), builderMethodPrefix);
+    public static <B, T> Builder<B, T> builder(Class<B> builderClass, Class<T> targetClass) {
+        return new MapBuilderProxy.Builder<>(builderClass, targetClass);
     }
 
-    public static <T, B> T newInstance(Class<T> builderClass, B targetInstance, String builderMethodPrefix) {
-        return (T) java.lang.reflect.Proxy.newProxyInstance(
-                builderClass.getClassLoader(),
-                new Class[] { builderClass },
-                new MapBuilderProxy(targetInstance, builderMethodPrefix));
+    public static <B, T> Builder<B, T> builder(Class<B> builderClass, T targetInstance) {
+        return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) targetInstance.getClass()).withTargetInstance(targetInstance);
     }
 
-    public static <T, B> T newInstance(Class<T> builderClass, Class<B> targetClass) {
-        return newInstance(builderClass, targetClass, null);
-    }
+    public static class Builder<B, T> {
 
-    public static <T, B> T newInstance(Class<T> builderClass,  B targetInstance) {
-        return newInstance(builderClass, targetInstance, null);
+        private final Class<B> builderClass;
+        private final Class<T> targetClass;
+        private T targetInstance;
+        private String builderMethodPrefix;
+        private String enumMappingMethod;
+
+        private Builder(Class<B> builderClass, Class<T> targetClass) {
+            this.builderClass = builderClass;
+            this.targetClass = targetClass;
+        }
+
+        public Builder<B, T> withTargetInstance(T targetInstance) {
+            this.targetInstance = targetInstance;
+            return this;
+        }
+
+        public Builder<B, T> withBuilderMethodPrefix(String prefix) {
+            this.builderMethodPrefix = prefix;
+            return this;
+        }
+
+        public Builder<B, T> withEnumMappingMethod(String enumMappingMethod) {
+            this.enumMappingMethod = enumMappingMethod;
+            return this;
+        }
+
+        public B newInstance() {
+            if (targetInstance == null) {
+                targetInstance = MapProxy.builder(targetClass).withEnumMappingMethod(enumMappingMethod).newInstance();
+            }
+            return (B) java.lang.reflect.Proxy.newProxyInstance(
+                    builderClass.getClassLoader(),
+                    new Class[] { builderClass },
+                    new MapBuilderProxy(targetInstance, builderMethodPrefix));
+        }
+
     }
 
     private MapBuilderProxy(Object target, String builderMethodPrefix) {
