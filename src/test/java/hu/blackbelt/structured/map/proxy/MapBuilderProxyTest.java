@@ -11,7 +11,7 @@ public class MapBuilderProxyTest {
 
     @Test
     public void testBuild() {
-        User user = MapBuilderProxy.newInstance(UserBuilder.class, User.class).id("1").active(true).loginName("teszt").build();
+        User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance().id("1").active(true).loginName("teszt").build();
 
         assertEquals("teszt", user.getLoginName());
         assertEquals("1", user.getId());
@@ -21,8 +21,8 @@ public class MapBuilderProxyTest {
 
     @Test
     public void testBuildFromExisting() {
-        User user = MapBuilderProxy.newInstance(UserBuilder.class, User.class).id("1").active(true).loginName("teszt").build();
-        User user2 = MapBuilderProxy.newInstance(UserBuilder.class, user).id("2").build();
+        User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance().id("1").active(true).loginName("teszt").build();
+        User user2 = MapBuilderProxy.builder(UserBuilder.class, user).newInstance().id("2").build();
         assertEquals("teszt", user2.getLoginName());
         assertEquals("2", user2.getId());
         assertEquals("teszt", ((MapHolder) user2).toMap().get("loginName"));
@@ -30,7 +30,7 @@ public class MapBuilderProxyTest {
 
     @Test
     public void testBuildWithProxy() {
-        User user = MapBuilderProxy.newInstance(UserBuilderWithPrefix.class, User.class, "with")
+        User user = MapBuilderProxy.builder(UserBuilderWithPrefix.class, User.class).withBuilderMethodPrefix("with").newInstance()
                 .withId("1").withActive(true).withLoginName("teszt").build();
 
         assertEquals("teszt", user.getLoginName());
