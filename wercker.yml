@@ -45,9 +45,24 @@ build:
     - wercker/maven:
       goals: deploy
       settings: .maven.xml
-      maven_opts: -DdeployOnly -Dgithub_release=true -Dgithub.prerelease=true -Dgithub.commitish=${WERCKER_GIT_COMMIT}
+      maven_opts: -DdeployOnly
       profiles: ${DEPLOY_PROFILES}
       cache_repo: true
+
+    - script:
+      name: get github release attributes
+      code: |-
+        export GITHUB_RELEASE_BODY=$(cat ./target/classes/.releasetemplate | jq -aRs . | sed 's/"//g')
+        export GITHUB_RELEASE_TITLE=$(echo "$VERSION_NUMBER" | jq -aRs . | sed 's/"//g')
+        echo "Release title: $GITHUB_RELEASE_TITLE"
+        echo "Release notes: $GITHUB_RELEASE_BODY"
+
+    - github-create-release:
+      token: $GITHUB_ACCESS_TOKEN
+      tag: $VERSION_NUMBER
+      title: $GITHUB_RELEASE_TITLE
+      body: $GITHUB_RELEASE_BODY
+      prerelease: true
 
 #  after-steps:
 #    - mbrevda/github-status:
@@ -148,7 +163,7 @@ release:
     - wercker/maven:
       goals: deploy
       settings: .maven.xml
-      maven_opts: -DdeployOnly -Dgithub_release=true -Dgithub.prerelease=true -Dgithub.commitish=${WERCKER_GIT_COMMIT}
+      maven_opts: -DdeployOnly
       profiles: ${DEPLOY_PROFILES}
       cache_repo: true
 
@@ -219,4 +234,18 @@ release:
       code: |-
              git push origin --all
              git push origin --tags
+
+    - script:
+      name: get github release attributes
+      code: |-
+        export GITHUB_RELEASE_BODY=$(cat ./target/classes/.releasetemplate | jq -aRs . | sed 's/"//g')
+        export GITHUB_RELEASE_TITLE=$(echo "$VERSION_NUMBER" | jq -aRs . | sed 's/"//g')
+        echo "Release title: $GITHUB_RELEASE_TITLE"
+        echo "Release notes: $GITHUB_RELEASE_BODY"
+
+    - github-create-release:
+      token: $GITHUB_ACCESS_TOKEN
+      tag: $VERSION_NUMBER
+      title: $GITHUB_RELEASE_TITLE
+      body: $GITHUB_RELEASE_BODY
 
