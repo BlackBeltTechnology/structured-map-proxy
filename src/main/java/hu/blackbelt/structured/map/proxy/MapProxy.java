@@ -194,12 +194,19 @@ public final class MapProxy implements InvocationHandler {
     }
 
     private Collection createMutableCollection(Class returnType, Collection valueTransformed) {
-        if (List.class.isAssignableFrom(returnType)) {
-            valueTransformed = new ArrayList<>(valueTransformed);
-        } else if (Set.class.isAssignableFrom(returnType)) {
-            valueTransformed = new HashSet<>(valueTransformed);
-        } else {
-            valueTransformed = new ArrayList<>(valueTransformed);
+        valueTransformed = null;
+        try {
+            Constructor constructor = returnType.getConstructor();
+            valueTransformed = (Collection) constructor.newInstance();
+            valueTransformed.addAll(valueTransformed);
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException | ClassCastException ex) {
+            if (List.class.isAssignableFrom(returnType)) {
+                valueTransformed = new ArrayList<>(valueTransformed);
+            } else if (Set.class.isAssignableFrom(returnType)) {
+                valueTransformed = new HashSet<>(valueTransformed);
+            } else {
+                valueTransformed = new ArrayList<>(valueTransformed);
+            }
         }
         return valueTransformed;
     }
