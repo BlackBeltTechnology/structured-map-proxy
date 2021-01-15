@@ -233,14 +233,14 @@ public class MapProxyTest {
                         hasEntry(is("id"), is("2")))
         ));
         assertThat((Iterable<String>) map.get("collectionWithoutType"), contains("Test1", "Test2"));
-        assertThat((Iterable<Map<?, ?>>) map.get("collectionWithMapType"),
+        assertThat((Iterable<Map<Object, Object>>) map.get("collectionWithMapType"),
                 contains(
                         hasEntry(is("k1"), is("v1")),
                         hasEntry(is("k2"), is("v2"))
                 ));
         assertThat((Map<?, ?>) map.get("mapWithoutType"), hasEntry(is("k1"), is("v1")));
 
-        assertThat((Map<?, Map<?, ?>>) map.get("mapWithValueType"),
+        assertThat((Map<?, Map<Object, Object>>) map.get("mapWithValueType"),
                 hasEntry(is("k1"), allOf(
                         hasEntry(is("id"), is("3")),
                         hasEntry(is("note"), is("Note3"))
