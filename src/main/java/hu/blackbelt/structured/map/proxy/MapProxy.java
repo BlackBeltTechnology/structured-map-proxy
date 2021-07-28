@@ -115,7 +115,8 @@ public final class MapProxy implements InvocationHandler {
                                 .withMap((Map) value)
                                 .withImmutable(immutable)
                                 .withIdentifierField(identifierField)
-                                .withEnumMappingMethod(enumMappingMethod));
+                                .withEnumMappingMethod(enumMappingMethod)
+                                .newInstance());
                     }
                 } else if (returnType.isAssignableFrom(value.getClass())) {
                     internal.put(attrName, value);
