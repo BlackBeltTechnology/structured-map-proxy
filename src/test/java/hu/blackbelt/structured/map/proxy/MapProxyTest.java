@@ -150,6 +150,26 @@ public class MapProxyTest {
     }
 
     @Test
+    public void testBuildFromMapWithSingleMapChild() {
+        Map<String, Object> prepared = new HashMap<>();
+        Map<String, Object> detail = new HashMap<>();
+
+        detail.put("id", "1");
+        detail.put("note", "Note1");
+
+        prepared.put("active", true);
+        prepared.put("id", "1");
+        prepared.put("singleUserDetail", detail );
+
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withIdentifierField("id")
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        assertTrue(user.getSingleUserDetail().getId().equals("1"));
+    }
+
+    @Test
     public void testToString() {
         Map<String, Object> prepared = new HashMap<>();
 
