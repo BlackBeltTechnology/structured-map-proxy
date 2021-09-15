@@ -242,7 +242,16 @@ public final class MapProxy implements InvocationHandler {
         } else if (!GET.equals(m.getName()) && m.getName().startsWith(GET)) {
             String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
             final Object value = internal.get(attrName);
-            return value;
+            final Class returnType = m.getReturnType();
+            if (value == null || returnType.isAssignableFrom(value.getClass())) {
+                return value;
+            } else if (returnType.getConstructor(value.getClass()) != null) {
+                return returnType.getConstructor(value.getClass()).newInstance(value);
+            } else if (returnType.getMethod("parse", value.getClass()) != null) {
+                return returnType.getMethod("parse", value.getClass()).invoke(null, value);
+            } else {
+                throw new IllegalStateException("Unable to get " + attrName + " attribute as " + returnType.getName());
+            }
         } else if (!IS.equals(m.getName()) && m.getName().startsWith(IS)) {
             String attrName = Character.toLowerCase(m.getName().charAt(2)) + m.getName().substring(3);
             return internal.get(attrName);
