@@ -6,6 +6,7 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.*;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collector;
@@ -238,23 +239,16 @@ public final class MapProxy implements InvocationHandler {
                 throw new IllegalStateException("Could not call set on immutable object");
             }
             String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
-            internal.put(attrName, args[0]);
+            final Object value = args[0];
+            internal.put(attrName, getValueAs(value, m.getParameterTypes()[0], "Unable to set " + attrName + " attribute as %s"));
         } else if (!GET.equals(m.getName()) && m.getName().startsWith(GET)) {
             String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
             final Object value = internal.get(attrName);
-            final Class returnType = m.getReturnType();
-            if (value == null || returnType.isAssignableFrom(value.getClass())) {
-                return value;
-            } else if (returnType.getConstructor(value.getClass()) != null) {
-                return returnType.getConstructor(value.getClass()).newInstance(value);
-            } else if (returnType.getMethod("parse", value.getClass()) != null) {
-                return returnType.getMethod("parse", value.getClass()).invoke(null, value);
-            } else {
-                throw new IllegalStateException("Unable to get " + attrName + " attribute as " + returnType.getName());
-            }
+            return getValueAs(value, m.getReturnType(), "Unable to get " + attrName + " attribute as %s");
         } else if (!IS.equals(m.getName()) && m.getName().startsWith(IS)) {
             String attrName = Character.toLowerCase(m.getName().charAt(2)) + m.getName().substring(3);
-            return internal.get(attrName);
+            final Object value = internal.get(attrName);
+            return getValueAs(value, boolean.class, "Unable to get " + attrName + " attribute as %s");
         } else if ("toMap".equals(m.getName())) {
             Map<Object, Object> map = new HashMap<>();
             for (Map.Entry entry : internal.entrySet()) {
@@ -273,6 +267,18 @@ public final class MapProxy implements InvocationHandler {
             return "PROXY" + map.toString();
         }
         return null;
+    }
+
+    private Object getValueAs(Object value, Class clazz, String errorPattern) throws Throwable {
+        if (value == null || clazz.isAssignableFrom(value.getClass())) {
+            return value;
+        } else if (clazz.getConstructor(value.getClass()) != null) {
+            return clazz.getConstructor(value.getClass()).newInstance(value);
+        } else if (clazz.getMethod("parse", value.getClass()) != null) {
+            return clazz.getMethod("parse", value.getClass()).invoke(null, value);
+        } else {
+            throw new IllegalStateException(MessageFormat.format(errorPattern, clazz.getName()));
+        }
     }
 
     private Function<Object, Map> objectToMap =
