@@ -286,7 +286,7 @@ public final class MapProxy implements InvocationHandler {
     }
 
     private Object getValueAs(Object value, Class clazz, String errorPattern) {
-        final Class valueClass = value.getClass();
+        final Class valueClass = value != null ? value.getClass() : Void.class;
         final Optional<Class> valuePrimitiveClass = PRIMITIVES_TO_WRAPPERS.entrySet().stream()
                 .filter(e -> Objects.equals(valueClass, e.getValue()))
                 .map(e -> (Class) e.getKey())

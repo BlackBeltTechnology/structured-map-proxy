@@ -9,10 +9,7 @@ import hu.blackbelt.structured.map.proxy.entity.UserDetail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -20,9 +17,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.collection.IsMapContaining.hasEntry;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MapProxyTest {
 
@@ -342,21 +337,20 @@ public class MapProxyTest {
 
     @Test
     public void testDifferentTypeWithConstructor() {
-        Map<String, Object> prepared1 =
-                ImmutableMap.<String, Object> builder()
-                        .put("title", "Test event")
-                        .put("date", 0L)
-                        .put("private", true)
-                        .put("room", "1/b")
-                        .build();
+        Map<String, Object> prepared1 = new TreeMap<>();
+        prepared1.put("title", "Test event");
+        prepared1.put("date", 0L);
+        prepared1.put("private", true);
+        prepared1.put("room", "1/b");
+        prepared1.put("notes", null);
 
         Event event1 = MapProxy.builder(Event.class).withMap(prepared1).withImmutable(true).newInstance();
 
         assertEquals(event1.getTitle(), "Test event");
         assertEquals(event1.getDate(), new Date(0));
         assertEquals(event1.isPrivate(), true);
-        final Object x = event1.getRoom();
         assertEquals(event1.getRoom(), Event.UpperCaseString.parse("1/B"));
+        assertNull(event1.getNotes());
     }
 
     <T> T getMapValue(Object input, Object key, Class<T> target) {

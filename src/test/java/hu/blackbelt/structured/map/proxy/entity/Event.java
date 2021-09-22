@@ -18,6 +18,9 @@ public interface Event {
     UpperCaseString getRoom();
     void setRoom(UpperCaseString room);
 
+    String getNotes();
+    void setNotes(String notes);
+
     @EqualsAndHashCode
     class UpperCaseString {
 
