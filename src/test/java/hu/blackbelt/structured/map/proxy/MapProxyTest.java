@@ -3,12 +3,14 @@ package hu.blackbelt.structured.map.proxy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import hu.blackbelt.structured.map.proxy.entity.Country;
+import hu.blackbelt.structured.map.proxy.entity.Event;
 import hu.blackbelt.structured.map.proxy.entity.User;
 import hu.blackbelt.structured.map.proxy.entity.UserDetail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -336,6 +338,25 @@ public class MapProxyTest {
 
         assertFalse(user1.equals(user2));
         assertFalse(user2.equals(user1));
+    }
+
+    @Test
+    public void testDifferentTypeWithConstructor() {
+        Map<String, Object> prepared1 =
+                ImmutableMap.<String, Object> builder()
+                        .put("title", "Test event")
+                        .put("date", 0L)
+                        .put("private", true)
+                        .put("room", "1/b")
+                        .build();
+
+        Event event1 = MapProxy.builder(Event.class).withMap(prepared1).withImmutable(true).newInstance();
+
+        assertEquals(event1.getTitle(), "Test event");
+        assertEquals(event1.getDate(), new Date(0));
+        assertEquals(event1.isPrivate(), true);
+        final Object x = event1.getRoom();
+        assertEquals(event1.getRoom(), Event.UpperCaseString.parse("1/B"));
     }
 
     <T> T getMapValue(Object input, Object key, Class<T> target) {
