@@ -1,6 +1,8 @@
 package hu.blackbelt.structured.map.proxy;
 
+import com.google.common.collect.ImmutableMap;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
+import lombok.extern.slf4j.Slf4j;
 
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -12,11 +14,25 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+@Slf4j
 public final class MapProxy implements InvocationHandler {
 
     public static final String SET = "set";
     public static final String GET = "get";
     public static final String IS = "is";
+
+    private static final Map<Class<?>, Class<?>> PRIMITIVES_TO_WRAPPERS
+            = new ImmutableMap.Builder<Class<?>, Class<?>>()
+            .put(boolean.class, Boolean.class)
+            .put(byte.class, Byte.class)
+            .put(char.class, Character.class)
+            .put(double.class, Double.class)
+            .put(float.class, Float.class)
+            .put(int.class, Integer.class)
+            .put(long.class, Long.class)
+            .put(short.class, Short.class)
+            .put(void.class, Void.class)
+            .build();
 
     public static final String DEFAULT_ENUM_MAPPING_METHOD = "name";
 
@@ -124,8 +140,8 @@ public final class MapProxy implements InvocationHandler {
                 } else if (returnType.isEnum()) {
                     internal.put(attrName, createEnumValue(value, returnType));
                 } else {
-                    throw new IllegalArgumentException("Could not assign " + value.getClass()
-                            + " to " + sourceClass.getName() + "." + attrName);
+                    internal.put(attrName, getValueAs(value, returnType, "Could not assign " + value.getClass()
+                            + " to " + sourceClass.getName() + "." + attrName + " as %s"));
                 }
             }
         }
@@ -240,7 +256,7 @@ public final class MapProxy implements InvocationHandler {
             }
             String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
             final Object value = args[0];
-            internal.put(attrName, getValueAs(value, m.getParameterTypes()[0], "Unable to set " + attrName + " attribute as %s"));
+            internal.put(attrName, value);
         } else if (!GET.equals(m.getName()) && m.getName().startsWith(GET)) {
             String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
             final Object value = internal.get(attrName);
@@ -269,16 +285,43 @@ public final class MapProxy implements InvocationHandler {
         return null;
     }
 
-    private Object getValueAs(Object value, Class clazz, String errorPattern) throws Throwable {
-        if (value == null || clazz.isAssignableFrom(value.getClass())) {
+    private Object getValueAs(Object value, Class clazz, String errorPattern) {
+        final Class valueClass = value.getClass();
+        final Optional<Class> valuePrimitiveClass = PRIMITIVES_TO_WRAPPERS.entrySet().stream()
+                .filter(e -> Objects.equals(valueClass, e.getValue()))
+                .map(e -> (Class) e.getKey())
+                .findAny();
+
+        if (value == null || clazz.isAssignableFrom(value.getClass()) || valuePrimitiveClass.isPresent() && clazz.isAssignableFrom(valuePrimitiveClass.get())) {
             return value;
-        } else if (clazz.getConstructor(value.getClass()) != null) {
-            return clazz.getConstructor(value.getClass()).newInstance(value);
-        } else if (clazz.getMethod("parse", value.getClass()) != null) {
-            return clazz.getMethod("parse", value.getClass()).invoke(null, value);
-        } else {
-            throw new IllegalStateException(MessageFormat.format(errorPattern, clazz.getName()));
         }
+
+        try {
+            clazz.getConstructor(valueClass).newInstance(value);
+        } catch (Exception ex) {
+            log.debug("Constructor not found to convert value");
+        }
+        if (valuePrimitiveClass.isPresent()) {
+            try {
+                return clazz.getConstructor(valuePrimitiveClass.get()).newInstance(value);
+            } catch (Exception ex) {
+                log.debug("Constructor not found to convert primitive value");
+            }
+        }
+        try {
+            return clazz.getMethod("parse", valueClass).invoke(null, value);
+        } catch (Exception ex) {
+            log.debug("Parse method not found to convert value");
+        }
+        if (valuePrimitiveClass.isPresent()) {
+            try {
+                return clazz.getMethod("parse", valuePrimitiveClass.get()).invoke(null, value);
+            } catch (Exception ex) {
+                log.debug("Parse method not found to convert primitive value");
+            }
+        }
+
+        throw new IllegalStateException(MessageFormat.format(errorPattern, clazz.getName()));
     }
 
     private Function<Object, Map> objectToMap =
@@ -294,7 +337,7 @@ public final class MapProxy implements InvocationHandler {
             };
 
     private static Function objectToMapProxyFunction(Class type, Boolean immutable, String identifierField, String enumMappingMethod) {
-        return (o) -> MapProxy.builder(type).withMap((Map)o).withIdentifierField(identifierField).withImmutable(immutable).withEnumMappingMethod(enumMappingMethod).newInstance();
+        return (o) -> MapProxy.builder(type).withMap((Map) o).withIdentifierField(identifierField).withImmutable(immutable).withEnumMappingMethod(enumMappingMethod).newInstance();
     }
 
     private static Collector toCollectorForType(Class<?> type) {
@@ -336,7 +379,7 @@ public final class MapProxy implements InvocationHandler {
                 }).collect(Collectors.toList());
             } else if (o instanceof Enum) {
                 try {
-                    return ((Enum)o).getClass().getMethod(enumMappingMethod).invoke(o);
+                    return ((Enum) o).getClass().getMethod(enumMappingMethod).invoke(o);
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     throw new IllegalArgumentException(e);
                 }
