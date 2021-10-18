@@ -56,5 +56,7 @@ wercker.env
 /**/.wercker
 **/GSModel.log*
 .release
+**/.flattened-pom.xml
+
 
 
