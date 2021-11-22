@@ -115,17 +115,18 @@ public final class MapProxy implements InvocationHandler {
             String attrName = propertyDescriptor.getName();
             if (internal.containsKey(attrName)) {
                 Object value = internal.get(attrName);
-                final Class returnType = propertyDescriptor.getReadMethod().getReturnType();
-                Type genericReturnType = propertyDescriptor.getReadMethod().getGenericReturnType();
+                final Class returnType = propertyDescriptor.getPropertyType();
                 if (value == null) {
                     internal.put(attrName, null);
-                } else if (Collection.class.isAssignableFrom(returnType)) {
+                } else if (Collection.class.isAssignableFrom(returnType) && (propertyDescriptor.getWriteMethod() != null || propertyDescriptor.getReadMethod() != null)) {
                     if (!(value instanceof Collection)) {
                         throw new IllegalArgumentException(String.format("The attribute %s in %s must be collection.", attrName, sourceClass.getName()));
                     }
+                    Type genericReturnType = propertyDescriptor.getReadMethod() != null ? propertyDescriptor.getReadMethod().getGenericReturnType() : propertyDescriptor.getWriteMethod().getGenericParameterTypes()[0];
                     internal.put(attrName, createCollectionValue((Collection) value, returnType, genericReturnType, immutable, identifierField, enumMappingMethod));
                 } else if (value instanceof Map) {
-                    if (Map.class.isAssignableFrom(returnType)) {
+                    if (Map.class.isAssignableFrom(returnType) && (propertyDescriptor.getWriteMethod() != null || propertyDescriptor.getReadMethod() != null)) {
+                        Type genericReturnType = propertyDescriptor.getReadMethod() != null ? propertyDescriptor.getReadMethod().getGenericReturnType() : propertyDescriptor.getWriteMethod().getGenericParameterTypes()[0];
                         internal.put(attrName, createMapValue((Map) value, genericReturnType, immutable, identifierField, enumMappingMethod));
                     } else if (returnType.isInterface()) {
                         internal.put(attrName, MapProxy.builder(returnType)
