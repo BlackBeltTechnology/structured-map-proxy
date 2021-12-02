@@ -133,6 +133,16 @@ jobs:
           -Psign-artifacts,release-judong \
           deploy
 
+      - name: Sonar Metrics
+        if: steps.context.outputs.branch == 'develop'
+        continue-on-error: true
+        run: |-
+          ./mvnw -B -Dstyle.color=always \
+          -Dsonar.projectKey=structured-map-proxy \
+          -Dsonar.host.url=https://sonar.judo.technology \
+          -Dsonar.login=${{ secrets.JUDO_SONAR_TOKEN }} \
+          sonar:sonar
+
 #      - name: Release P2
 #        run: |-
 #          ./mvnw -B -Dstyle.color=always \
