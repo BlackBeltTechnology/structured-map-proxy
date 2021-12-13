@@ -9,15 +9,23 @@ import hu.blackbelt.structured.map.proxy.entity.UserDetail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.is;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.collection.IsMapContaining.hasEntry;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MapProxyTest {
 
@@ -31,6 +39,7 @@ public class MapProxyTest {
     @BeforeEach
     public void before() {
         user = MapProxy.builder(User.class).newInstance();
+
         userDetail1 = MapProxy.builder(UserDetail.class).newInstance();
         userDetail1.setId("1");
         userDetail1.setNote("Note1");
@@ -97,6 +106,9 @@ public class MapProxyTest {
         user.setLoginName("teszt");
         user.setId("1");
         user.setCountry(Country.AT);
+
+        assertNotNull(user.getUserDetails());
+        assertEquals(Collections.EMPTY_LIST, user.getUserDetails());
 
         user.setUserDetails(ImmutableList.of(userDetail1, userDetail2));
         user.setCollectionWithoutType(ImmutableList.of("Test1", "Test2"));
