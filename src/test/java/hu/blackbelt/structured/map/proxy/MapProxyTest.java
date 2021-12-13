@@ -38,7 +38,7 @@ public class MapProxyTest {
 
     @BeforeEach
     public void before() {
-        user = MapProxy.builder(User.class).newInstance();
+        user = MapProxy.builder(User.class).withNullSafeCollection(true).newInstance();
 
         userDetail1 = MapProxy.builder(UserDetail.class).newInstance();
         userDetail1.setId("1");

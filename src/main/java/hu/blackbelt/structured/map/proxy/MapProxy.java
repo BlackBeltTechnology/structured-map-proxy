@@ -65,7 +65,7 @@ public final class MapProxy implements InvocationHandler {
     public static class Builder<T> {
         private final Class<T> clazz;
         private boolean immutable = false;
-        private boolean nullSafeCollection = true;
+        private boolean nullSafeCollection = false;
         private Map<String, ?> map = Collections.emptyMap();
         private String identifierField;
         private String enumMappingMethod = DEFAULT_ENUM_MAPPING_METHOD;
@@ -274,7 +274,7 @@ public final class MapProxy implements InvocationHandler {
             String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
             Object value = internal.get(attrName);
             if (nullSafeCollection && value == null && Collection.class.isAssignableFrom(m.getReturnType())) {
-                value = Collections.EMPTY_LIST;
+                value = new ArrayList<>();
             }
             return getValueAs(value, m.getReturnType(), "Unable to get " + attrName + " attribute as %s");
         } else if (!IS.equals(m.getName()) && m.getName().startsWith(IS)) {
