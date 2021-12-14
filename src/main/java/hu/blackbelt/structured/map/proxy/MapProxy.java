@@ -7,7 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.Function;
@@ -38,8 +43,9 @@ public final class MapProxy implements InvocationHandler {
 
     private Map<String, ?> original;
     private Map<String, Object> internal;
-    private boolean immutable = true;
-    private String identifierField = null;
+    private boolean immutable;
+    private boolean nullSafeCollection;
+    private String identifierField;
     private Class clazz;
     private final String enumMappingMethod;
 
@@ -51,6 +57,7 @@ public final class MapProxy implements InvocationHandler {
         return new Builder(proxy.clazz)
                 .withEnumMappingMethod(proxy.enumMappingMethod)
                 .withImmutable(proxy.immutable)
+                .withNullSafeCollection(proxy.nullSafeCollection)
                 .withMap(proxy.original)
                 .withIdentifierField(proxy.identifierField);
     }
@@ -58,6 +65,7 @@ public final class MapProxy implements InvocationHandler {
     public static class Builder<T> {
         private final Class<T> clazz;
         private boolean immutable = false;
+        private boolean nullSafeCollection = false;
         private Map<String, ?> map = Collections.emptyMap();
         private String identifierField;
         private String enumMappingMethod = DEFAULT_ENUM_MAPPING_METHOD;
@@ -68,6 +76,11 @@ public final class MapProxy implements InvocationHandler {
 
         public Builder<T> withImmutable(boolean immutable) {
             this.immutable = immutable;
+            return this;
+        }
+
+        public Builder<T> withNullSafeCollection(boolean nullSafeCollection) {
+            this.nullSafeCollection = nullSafeCollection;
             return this;
         }
 
@@ -87,27 +100,28 @@ public final class MapProxy implements InvocationHandler {
         }
 
         public T newInstance() {
-            return MapProxy.newInstance(clazz, map, immutable, identifierField, enumMappingMethod);
+            return MapProxy.newInstance(clazz, map, immutable, nullSafeCollection, identifierField, enumMappingMethod);
         }
 
     }
 
-    private static <T> T newInstance(Class<T> clazz, Map<String, ?> map, boolean immutable, String identifierField, String enumMappingMethod) {
+    private static <T> T newInstance(Class<T> clazz, Map<String, ?> map, boolean immutable, boolean nullSafeCollection, String identifierField, String enumMappingMethod) {
         try {
             return (T) java.lang.reflect.Proxy.newProxyInstance(
                     new CompositeClassLoader(clazz.getClassLoader(), MapHolder.class.getClassLoader()),
                     new Class[]{clazz, MapHolder.class},
-                    new MapProxy(clazz, map, immutable, identifierField, enumMappingMethod));
+                    new MapProxy(clazz, map, immutable, nullSafeCollection, identifierField, enumMappingMethod));
         } catch (IntrospectionException e) {
             throw new IllegalArgumentException("Could not create instance", e);
         }
     }
 
-    private <T> MapProxy(Class<T> sourceClass, Map<String, ?> map, boolean immutable, String identifierField, String enumMappingMethod) throws IntrospectionException {
+    private <T> MapProxy(Class<T> sourceClass, Map<String, ?> map, boolean immutable, boolean nullSafeCollection, String identifierField, String enumMappingMethod) throws IntrospectionException {
         original = map;
         internal = new HashMap<>(map);
         this.identifierField = identifierField;
         this.immutable = immutable;
+        this.nullSafeCollection = nullSafeCollection;
         this.clazz = sourceClass;
         this.enumMappingMethod = enumMappingMethod;
 
@@ -232,8 +246,7 @@ public final class MapProxy implements InvocationHandler {
         return valueTransformed;
     }
 
-    public Object invoke(Object proxy, Method m, Object[] args)
-            throws Throwable {
+    public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
         if ("hashCode".equals(m.getName())) {
             return proxy.toString().hashCode();
         } else if ("equals".equals(m.getName())) {
@@ -241,14 +254,13 @@ public final class MapProxy implements InvocationHandler {
             if (obj == null) {
                 return false;
             } else if (obj.getClass().isAssignableFrom(clazz) || clazz.isAssignableFrom(obj.getClass())) {
-                if (identifierField != null) {
-                    Method getId = ReflectionUtil.findGetter(obj.getClass(), identifierField);
-                    Object thisId = internal.get(identifierField);
-                    Object thatId = getId.invoke(obj);
-                    return this == null ^ thatId == null ? false : thisId != null ? thisId.equals(thatId) : false;
-                } else if (obj.toString().equals(proxy.toString())) {
-                    return true;
+                if (identifierField == null) {
+                    return obj.toString().equals(proxy.toString());
                 }
+                Method getId = ReflectionUtil.findGetter(obj.getClass(), identifierField);
+                Object thisId = internal.get(identifierField);
+                Object thatId = getId.invoke(obj);
+                return thisId != null && thisId.equals(thatId);
             }
             return false;
         } else if (!SET.equals(m.getName()) && m.getName().startsWith(SET)) {
@@ -260,7 +272,14 @@ public final class MapProxy implements InvocationHandler {
             internal.put(attrName, value);
         } else if (!GET.equals(m.getName()) && m.getName().startsWith(GET)) {
             String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
-            final Object value = internal.get(attrName);
+            Object value = internal.get(attrName);
+            if (nullSafeCollection && value == null && Collection.class.isAssignableFrom(m.getReturnType())) {
+                if (immutable) {
+                    value = Collections.EMPTY_LIST;
+                } else {
+                    value = new ArrayList<>();
+                }
+            }
             return getValueAs(value, m.getReturnType(), "Unable to get " + attrName + " attribute as %s");
         } else if (!IS.equals(m.getName()) && m.getName().startsWith(IS)) {
             String attrName = Character.toLowerCase(m.getName().charAt(2)) + m.getName().substring(3);
@@ -281,7 +300,7 @@ public final class MapProxy implements InvocationHandler {
             for (Map.Entry entry : internal.entrySet().stream().sorted(Map.Entry.comparingByKey()).collect(Collectors.toList())) {
                 map.put(entry.getKey(), entry.getValue());
             }
-            return "PROXY" + map.toString();
+            return "PROXY" + map;
         }
         return null;
     }
