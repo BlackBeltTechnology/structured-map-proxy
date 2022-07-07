@@ -1,7 +1,12 @@
 package hu.blackbelt.structured.map.proxy;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.beans.IntrospectionException;
@@ -15,6 +20,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -116,6 +124,33 @@ public final class MapProxy implements InvocationHandler {
         }
     }
 
+    @AllArgsConstructor
+    @Getter
+    private static class AttributeInfo {
+        Class propertyType;
+        ParameterizedType parameterType;
+        PropertyDescriptor propertyDescriptor;
+    }
+
+    private static CacheLoader<Class, Map<String, AttributeInfo>> typeInfoCacheLoader = new CacheLoader<Class, Map<String, AttributeInfo>>() {
+        @Override
+        public Map<String, AttributeInfo> load(Class sourceClass) throws Exception {
+            Map<String, AttributeInfo> targetTypes = new ConcurrentHashMap<>();
+            for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(sourceClass).getPropertyDescriptors()) {
+                String attrName = propertyDescriptor.getName();
+                final Class propertyType = propertyDescriptor.getPropertyType();
+                Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
+                targetTypes.put(attrName, new AttributeInfo(propertyType, parametrizedType.orElse(null), propertyDescriptor));
+            }
+            return targetTypes;
+        }
+    };
+
+    private static LoadingCache<Class, Map<String, AttributeInfo>> typeInfoCache = CacheBuilder
+            .newBuilder()
+            .expireAfterAccess(60, TimeUnit.SECONDS)
+            .build(typeInfoCacheLoader);
+
     private <T> MapProxy(Class<T> sourceClass, Map<String, ?> map, boolean immutable, boolean nullSafeCollection, String identifierField, String enumMappingMethod) throws IntrospectionException {
         original = map;
         internal = new HashMap<>(map);
@@ -125,40 +160,80 @@ public final class MapProxy implements InvocationHandler {
         this.clazz = sourceClass;
         this.enumMappingMethod = enumMappingMethod;
 
-        for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(sourceClass).getPropertyDescriptors()) {
-            String attrName = propertyDescriptor.getName();
+        Map<String, AttributeInfo> typeInfo = null;
+        try {
+            typeInfo = typeInfoCache.get(sourceClass);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        typeInfo.forEach((attrName, attrInfo) -> {
             if (internal.containsKey(attrName)) {
                 Object value = internal.get(attrName);
-                final Class returnType = propertyDescriptor.getPropertyType();
+                if (value instanceof Optional) {
+                    value = ((Optional) value).orElse(null);
+                }
+                final Class propertyType = attrInfo.getPropertyType();
+                Optional<ParameterizedType> parametrizedType = Optional.ofNullable(attrInfo.getParameterType());
                 if (value == null) {
                     internal.put(attrName, null);
-                } else if (Collection.class.isAssignableFrom(returnType) && (propertyDescriptor.getWriteMethod() != null || propertyDescriptor.getReadMethod() != null)) {
+                } else if (Collection.class.isAssignableFrom(propertyType)) {
                     if (!(value instanceof Collection)) {
                         throw new IllegalArgumentException(String.format("The attribute %s in %s must be collection.", attrName, sourceClass.getName()));
                     }
-                    Type genericReturnType = propertyDescriptor.getReadMethod() != null ? propertyDescriptor.getReadMethod().getGenericReturnType() : propertyDescriptor.getWriteMethod().getGenericParameterTypes()[0];
-                    internal.put(attrName, createCollectionValue((Collection) value, returnType, genericReturnType, immutable, identifierField, enumMappingMethod));
+                    internal.put(attrName, createCollectionValue((Collection) value, propertyType, parametrizedType.orElse(null), immutable, identifierField, enumMappingMethod));
+                } else if (Optional.class.isAssignableFrom(propertyType) && parametrizedType.isPresent()) {
+                    Class optionalType = getRawType(parametrizedType.orElseThrow(() ->
+                            new IllegalStateException(String.format("Optional type attribute %s in %s class does not have generic type.", attrName, sourceClass.getName()))), 0);
+                    if (value instanceof Map) {
+                        if (optionalType.isInterface()) {
+                            internal.put(attrName, MapProxy.builder(optionalType)
+                                    .withMap((Map) value)
+                                    .withImmutable(immutable)
+                                    .withIdentifierField(identifierField)
+                                    .withEnumMappingMethod(enumMappingMethod)
+                                    .newInstance());
+                        } else {
+                            throw new IllegalArgumentException(String.format("The attribute %s in %s is Optional. The Optional's generic type have to be interface.", attrName, sourceClass.getName()));
+                        }
+                    } else if (optionalType.isAssignableFrom(value.getClass())) {
+                        internal.put(attrName, value);
+                    }
                 } else if (value instanceof Map) {
-                    if (Map.class.isAssignableFrom(returnType) && (propertyDescriptor.getWriteMethod() != null || propertyDescriptor.getReadMethod() != null)) {
-                        Type genericReturnType = propertyDescriptor.getReadMethod() != null ? propertyDescriptor.getReadMethod().getGenericReturnType() : propertyDescriptor.getWriteMethod().getGenericParameterTypes()[0];
-                        internal.put(attrName, createMapValue((Map) value, genericReturnType, immutable, identifierField, enumMappingMethod));
-                    } else if (returnType.isInterface()) {
-                        internal.put(attrName, MapProxy.builder(returnType)
+                    if (Map.class.isAssignableFrom(propertyType)) {
+                        internal.put(attrName, createMapValue((Map) value, propertyType, parametrizedType.orElse(null), immutable, identifierField, enumMappingMethod));
+                    } else if (propertyType.isInterface()) {
+                        internal.put(attrName, MapProxy.builder(propertyType)
                                 .withMap((Map) value)
                                 .withImmutable(immutable)
                                 .withIdentifierField(identifierField)
                                 .withEnumMappingMethod(enumMappingMethod)
                                 .newInstance());
                     }
-                } else if (returnType.isAssignableFrom(value.getClass())) {
+                } else if (propertyType.isAssignableFrom(value.getClass())) {
                     internal.put(attrName, value);
-                } else if (returnType.isEnum()) {
-                    internal.put(attrName, createEnumValue(value, returnType));
+                } else if (propertyType.isEnum()) {
+                    internal.put(attrName, createEnumValue(value, propertyType));
                 } else {
-                    internal.put(attrName, getValueAs(value, returnType, "Could not assign " + value.getClass()
+                    internal.put(attrName, getValueAs(value, propertyType, "Could not assign " + value.getClass()
                             + " to " + sourceClass.getName() + "." + attrName + " as %s"));
                 }
             }
+        });
+    }
+
+    private static Optional<ParameterizedType> getGetterOrSetterParameterizedType(PropertyDescriptor propertyDescriptor) {
+        Type genericType = null;
+        if (propertyDescriptor.getReadMethod() != null) {
+            genericType = propertyDescriptor.getReadMethod().getGenericReturnType();
+        }
+        if (genericType == null && propertyDescriptor.getWriteMethod() != null && propertyDescriptor.getWriteMethod().getGenericParameterTypes().length > 0) {
+            genericType = propertyDescriptor.getWriteMethod().getGenericParameterTypes()[0];
+        }
+        if (genericType != null && genericType instanceof ParameterizedType) {
+            return Optional.of((ParameterizedType) genericType);
+        } else {
+            return Optional.empty();
         }
     }
 
@@ -185,11 +260,12 @@ public final class MapProxy implements InvocationHandler {
         return enumValue;
     }
 
-    private Map createMapValue(Map value, Type genericReturnType, boolean immutable, String identifierField, String enumMappingMethod) {
+    private Map createMapValue(Map value, Class propertyType, ParameterizedType parameterizedType, boolean immutable, String identifierField, String enumMappingMethod) {
         Map transformedValue;
-        if (genericReturnType instanceof ParameterizedType) {
-            final Class mapKeyType = getRawType((ParameterizedType) genericReturnType, 0);
-            final Class mapValueType = getRawType((ParameterizedType) genericReturnType, 1);
+
+        if (parameterizedType != null) {
+            final Class mapKeyType = getRawType(parameterizedType, 0);
+            final Class mapValueType = getRawType(parameterizedType, 1);
             Function<Map.Entry, ?> keyMapper = mapEntryKey();
             Function<Map.Entry, ?> valueMapper = mapEntryValue();
             if (mapKeyType.isInterface()) {
@@ -208,18 +284,18 @@ public final class MapProxy implements InvocationHandler {
         return transformedValue;
     }
 
-    private Collection createCollectionValue(Collection value, Class returnType, Type genericReturnType, boolean immutable, String identifierField, String enumMappingMethod) {
+    private Collection createCollectionValue(Collection value, Class propertyType, ParameterizedType parameterizedType, boolean immutable, String identifierField, String enumMappingMethod) {
         Collection transformedValue = value;
-        if (genericReturnType instanceof ParameterizedType) {
-            final Class collectionReturnType = getRawType((ParameterizedType) genericReturnType, 0);
-            if (collectionReturnType.isInterface()
-                    && !Map.class.isAssignableFrom(collectionReturnType)) {
-                transformedValue = (Collection) ((Collection) value).stream()
+        if (parameterizedType != null) {
+            final Class collectionType = getRawType(parameterizedType, 0);
+            if (collectionType.isInterface()
+                    && !Map.class.isAssignableFrom(collectionType)) {
+                transformedValue =  (Collection) value.stream()
                         .map(objectToMap)
-                        .map(objectToMapProxyFunction(collectionReturnType, immutable, identifierField, enumMappingMethod))
-                        .collect(toCollectorForType(returnType));
+                        .map(objectToMapProxyFunction(collectionType, immutable, identifierField, enumMappingMethod))
+                        .collect(toCollectorForType(propertyType));
                 if (!immutable) {
-                    transformedValue = createMutableCollection(returnType, transformedValue);
+                    transformedValue = createMutableCollection(propertyType, transformedValue);
                 }
             }
         }
@@ -278,6 +354,16 @@ public final class MapProxy implements InvocationHandler {
                     value = Collections.EMPTY_LIST;
                 } else {
                     value = new ArrayList<>();
+                }
+            }
+            AttributeInfo attributeInfo = typeInfoCache.get(clazz).get(attrName);
+            if (attributeInfo != null) {
+                if (Optional.class.isAssignableFrom(attributeInfo.getPropertyType())) {
+                    if (value instanceof Optional) {
+                        return value;
+                    } else {
+                        return Optional.ofNullable(getValueAs(value, getRawType(attributeInfo.getParameterType(), 0), "Unable to get " + attrName + " attribute as %s"));
+                    }
                 }
             }
             return getValueAs(value, m.getReturnType(), "Unable to get " + attrName + " attribute as %s");
