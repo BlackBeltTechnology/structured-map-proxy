@@ -9,15 +9,10 @@ import hu.blackbelt.structured.map.proxy.entity.UserDetail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
+import java.time.LocalDateTime;
+import java.util.*;
 
-import static org.hamcrest.CoreMatchers.allOf;
-import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.collection.IsMapContaining.hasEntry;
@@ -63,7 +58,7 @@ public class MapProxyTest {
     }
 
     private void performStructuralTestCases() {
-        assertEquals("teszt", user.getLoginName());
+        assertEquals(Optional.of("teszt"), user.getLoginName());
         assertEquals("teszt", getMapValue(user, "loginName", String.class));
 
         assertEquals("1", user.getId());
@@ -120,6 +115,34 @@ public class MapProxyTest {
         user.setMapWithValueType(ImmutableMap.of("k1", userDetail3));
         user.setMapWithValueTypeAndKeyType(ImmutableMap.of(userDetail4, userDetail5));
         performStructuralTestCases();
+    }
+
+    @Test
+    public void testOptional() {
+        Map<String, Object> prepared = new HashMap<>();
+        LocalDateTime time = LocalDateTime.of(2022, 2, 2, 22, 22, 22);
+        prepared.put("active", true);
+        prepared.put("id", "1");
+        prepared.put("email", Optional.of("test@test.com"));
+        prepared.put("loginName", Optional.of("teszt"));
+        prepared.put("lastLoginTime", Optional.of(time));
+
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(true)
+                .withIdentifierField("id")
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        Map map = ((MapHolder) user).toMap();
+        assertThat(map.get("loginName"), is("teszt"));
+        assertThat(user.getLoginName(), is(Optional.of("teszt")));
+        assertThat(map.get("email"), is("test@test.com"));
+        assertThat(user.getEmail(), is("test@test.com"));
+        assertThat(map.get("lastLoginTime"), is(time));
+        assertThat(user.getLastLoginTime(), is(time));
+
+        assertThat(map.get("firstName"), is(nullValue()));
+        assertThat(user.getFirstName(), is(Optional.empty()));
     }
 
     @Test
