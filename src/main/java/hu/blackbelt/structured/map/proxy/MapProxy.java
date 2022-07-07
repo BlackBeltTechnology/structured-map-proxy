@@ -286,8 +286,6 @@ public final class MapProxy implements InvocationHandler {
 
     private Collection createCollectionValue(Collection value, Class propertyType, ParameterizedType parameterizedType, boolean immutable, String identifierField, String enumMappingMethod) {
         Collection transformedValue = value;
-//        final Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
-//        final Class propertyType = propertyDescriptor.getPropertyType();
         if (parameterizedType != null) {
             final Class collectionType = getRawType(parameterizedType, 0);
             if (collectionType.isInterface()
