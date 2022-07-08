@@ -148,7 +148,7 @@ public final class MapProxy implements InvocationHandler {
 
     private static LoadingCache<Class, Map<String, AttributeInfo>> typeInfoCache = CacheBuilder
             .newBuilder()
-            .expireAfterAccess(60, TimeUnit.SECONDS)
+            .expireAfterAccess(Long.parseLong(System.getProperty("structuredMapProxyCacheExpireInSecond", "60")), TimeUnit.SECONDS)
             .build(typeInfoCacheLoader);
 
     private <T> MapProxy(Class<T> sourceClass, Map<String, ?> map, boolean immutable, boolean nullSafeCollection, String identifierField, String enumMappingMethod) throws IntrospectionException {
