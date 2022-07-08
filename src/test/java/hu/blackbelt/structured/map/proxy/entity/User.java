@@ -3,6 +3,7 @@ package hu.blackbelt.structured.map.proxy.entity;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 
 public interface User extends Entity {
     Boolean getActive();
@@ -19,15 +20,15 @@ public interface User extends Entity {
     void setCredential(String credential);
     String getEmail();
     void setEmail(String email);
-    String getFirstName();
+    Optional<String> getFirstName();
     void setFirstName(String firstName);
     String getGuid();
     void setGuid(String guid);
     LocalDateTime getLastLoginTime();
     void setLastLoginTime(LocalDateTime lastLoginTime);
-    String getLastName();
+    Optional<String> getLastName();
     void setLastName(String lastName);
-    String getLoginName();
+    Optional<String> getLoginName();
     void setLoginName(String loginName);
     Boolean getNotificationEmail();
     void setNotificationEmail(Boolean notificationEmail);
