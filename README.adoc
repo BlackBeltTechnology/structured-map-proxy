@@ -1,7 +1,194 @@
 # structured-map-proxy
 
-It can hanlde to make interface based proxys with java.util.Map backend.
-It is structured, means embedded java.util.Collection can be backed also by generic.
+## What is this library about?
 
-Example:
+It can hanlde to make interface based proxys with java.util.Map backend. Which means you can define typesafe handlers to dynamic strcutures as Map and Collection of maps over the Map and Collection defined generics.
+It can handle referenced other interfaces too, so all type of structures can be defined with a structure of interfaces.
+The map entries and interface methods are mapped as JavaBean standard descibes. Means to map 
+a String named as `stringValue` in map have to be mapped in interface as `getStringValue` and `setStringValue`
 
+## How to use?
+
+Add to your pom.xml:
+
+[source,xml]
+----
+<dependency>
+  <groupId>hu.blackbelt</groupId>
+  <artifactId>structured-map-proxy</artifactId>
+  <version>LATEST</version>
+  <type>bundle</type>
+</dependency>
+----
+
+## Example:
+
+In this example there is an User which can contain UserDetail as a single and containment collection.
+
+
+.Define getters/and setters in interface
+[source,java]
+----
+public interface Entity extends Serializable {
+    Serializable getId();
+    void setId(Serializable id);
+}
+
+public interface User extends Entity {
+    Boolean getActive();
+    void setActive(Boolean active);
+
+    String getCredential();
+    void setCredential(String credential);
+
+    String getEmail();
+    void setEmail(String email);
+
+    Optional<String> getFirstName();
+    void setFirstName(String firstName);
+
+    Optional<String> getLastName();
+    void setLastName(String lastName);
+
+    Optional<String> getLoginName();
+    void setLoginName(String loginName);
+
+    LocalDateTime getLastLoginTime();
+    void setLastLoginTime(LocalDateTime lastLoginTime);
+ 
+    UserDetail getSingleUserDetail();
+    void setSingleUserDetail(UserDetail userDetail);
+
+    Collection<UserDetail> getUserDetails();
+    void setUserDetails(Collection<UserDetail> userDetails);
+}
+
+public interface UserDetail {
+    String getId();
+    void setId(String id);
+
+    String getNote();
+    void setNote(String note);
+}
+----
+
+
+.Create proxy from Map
+[source,java]
+----
+// Create map represents fields.
+Map<String, Object> prepared = new HashMap<>();
+prepared.put("active", true);
+prepared.put("id", "1");
+prepared.put("email", Optional.of("test@test.com"));
+prepared.put("loginName", Optional.of("teszt"));
+prepared.put("lastLoginTime", Optional.of(time));
+prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("id", "1", "note", "Note1")));
+
+User user = MapProxy.builder(User.class)
+        .withMap(prepared)
+        .newInstance();
+
+user.setEmail("another@example.com");
+----
+
+
+.Create Map from proxy
+[source,java]
+----
+// Create an empty proxy
+User user = MapProxy.builder(User.class).newInstance();
+user.setActive(true);
+user.setLoginName("teszt");
+user.setId("1");
+
+UserDetail userDetail1 = MapProxy.builder(UserDetail.class).newInstance();
+userDetail1.setId("1");
+userDetail1.setNote("Note1");
+
+UserDetail userDetail2 = MapProxy.builder(UserDetail.class).newInstance();
+userDetail2.setId("2");
+userDetail2.setNote("Note2");
+
+user.setUserDetails(ImmutableList.of(userDetail1, userDetail2));
+
+Map<String, Object> mapRepresentation = ((MapHolder) user).toMap();
+----
+
+
+Not only bean type proxy can be created. Interface for builders can be defined/
+
+
+.Defined builder interfaces
+[source,java]
+----
+public interface UserBuilder {
+    UserBuilder id(Serializable id);
+    UserBuilder active(Boolean par);
+    UserBuilder credential(String par);
+    UserBuilder email(String par);
+    UserBuilder firstName(String par);
+    UserBuilder lastName(String par);
+    UserBuilder loginName(String par);
+    UserBuilder lastLoginTime(LocalDateTime par);
+    UserBuilder userDetails(Collection<UserDetail> userDetails);
+    UserBuilder singleUserDetail(UserDetail userDetail);
+
+    User build();
+}
+----
+
+
+.Create proxy builder for type
+[source,java]
+----
+User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+     .id("1")
+     .active(true)
+     .loginName("teszt")
+     .build();
+----
+
+
+
+## Supported options in MapProxy
+
+Options can be defined to the MapProxy's builder. For example:
+
+.Immutable option added
+[source,java]
+----
+MapProxy.builder(User.class).withImmutable(true).newInstance();
+----
+
+
+- immutable (default `false`)
+It defines that the fields and collection in the created proxy is immutable, so all operation call cause `IllegalStateException`
+- nullSafeCollection (default `false`)
+If it is defined, when a collection is not set in the map an empty collection returns. Means the collection in interface never be null.
+- identifierField (default `none`)
+Special field which can be used to determinate equality of 2 instance. When it is not defined the String representation of the 2 objects is used for `equals`
+- enumMappingMethod (default `name`)
+When enum type defined as a field, have to be defined what type of representation is coded in the map. `name` menas the name of enum value is used. `getOrdinal` means the ordinal value. Any other specific method can be used whic is defined in the enum type.
+
+
+## Supported options in MapBuilderProxy
+
+Options can be defined to the MapBuilderProxy's builder. For example:
+
+.Builder method prefix option added
+[source,java]
+----
+User user = MapBuilderProxy.builder(UserBuilder.class, User.class).withBuilderMethodPrefix("with").newInstance()
+     .id("1")
+     .active(true)
+     .loginName("teszt")
+     .build();
+----
+
+
+- builderMethodPrefix (default `false`)
+It defines that the buidler method can have prefix. By default the builder methods match with the field name. With this option
+it can be renamed.
+- enumMappingMethod (default `name`)
+When enum type defined as a field, have to be defined what type of representation is coded in the map. `name` menas the name of enum value is used. `getOrdinal` means the ordinal value. Any other specific method can be used whic is defined in the enum type.
