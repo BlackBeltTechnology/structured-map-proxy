@@ -488,7 +488,7 @@
 
 
         <profile>
-            <id>generate-asciidoc-documents</id>
+            <id>generate-github-asciidoc-diagrams</id>
 
             <properties>
                 <asciidoctor.maven.plugin.version>2.2.2</asciidoctor.maven.plugin.version>
@@ -565,6 +565,32 @@
                                         <idprefix/>
                                         <idseparator>-</idseparator>
                                     </attributes>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-generated-gitflow-diagrams</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+
+                                <configuration>
+                                    <outputDirectory>${basedir}/.github</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${basedir}/target/generated-docs/images/</directory>
+                                            <includes>
+                                                <include>*.png</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
                                 </configuration>
                             </execution>
                         </executions>

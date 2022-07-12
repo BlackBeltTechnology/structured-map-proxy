@@ -93,6 +93,13 @@ ifndef::env-github[]
 @startuml
 
 partition build.yml {
+  skinparam shadowing false
+  skinparam ActivityBackgroundColor WhiteSmoke
+  skinparam ActivityBorderColor Black
+  skinparam ActivityBorderThickness 1
+  skinparam ArrowColor Black
+  skinparam ActivityDiamondBackgroundColor WhiteSmoke
+  skinparam ActivityDiamondBorderColor Black
 
   #business:**when**\npush on **__develop__** branch\nor\npull request on **__develop__**, **__master__**, **__increment/*__**, **__release/*__** __branch__;
 
@@ -136,6 +143,13 @@ ifndef::env-github[]
 @startuml
 
 partition merge-pr-tagged.yml {
+  skinparam shadowing false
+  skinparam ActivityBackgroundColor WhiteSmoke
+  skinparam ActivityBorderColor Black
+  skinparam ActivityBorderThickness 1
+  skinparam ArrowColor Black
+  skinparam ActivityDiamondBackgroundColor WhiteSmoke
+  skinparam ActivityDiamondBorderColor Black
 
   #business:**when**\npush on **__merge-pr/*__** tag;
 
@@ -175,6 +189,13 @@ ifndef::env-github[]
 @startuml
 
 partition create-release-on-master.yml {
+  skinparam shadowing false
+  skinparam ActivityBackgroundColor WhiteSmoke
+  skinparam ActivityBorderColor Black
+  skinparam ActivityBorderThickness 1
+  skinparam ArrowColor Black
+  skinparam ActivityDiamondBackgroundColor WhiteSmoke
+  skinparam ActivityDiamondBorderColor Black
 
   #business:**when**\npush on **__master__** __branch__;
 
@@ -201,6 +222,13 @@ ifndef::env-github[]
 @startuml
 
 partition release.yml {
+  skinparam shadowing false
+  skinparam ActivityBackgroundColor WhiteSmoke
+  skinparam ActivityBorderColor Black
+  skinparam ActivityBorderThickness 1
+  skinparam ArrowColor Black
+  skinparam ActivityDiamondBackgroundColor WhiteSmoke
+  skinparam ActivityDiamondBorderColor Black
 
   #business:**when**\nmanually triggred with **__given version__**\nwhich is **'auto'** or any other in **major.minor.qualifier** form;
 
