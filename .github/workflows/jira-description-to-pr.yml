@@ -9,11 +9,6 @@ jobs:
     runs-on: judong
     timeout-minutes: 3
     steps:
-      - name: 🖨️ Dump GitHub context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
       - name: 🛂 Enforce Jira Issue Key in Pull Request Title
         if: ${{ github.base_ref == 'develop' && (startsWith(github.head_ref, 'feature') || startsWith(github.head_ref, 'bugfix'))}}
         uses: ryanvade/enforce-pr-title-style-action@v1

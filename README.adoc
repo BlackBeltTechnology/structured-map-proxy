@@ -116,8 +116,7 @@ Map<String, Object> mapRepresentation = ((MapHolder) user).toMap();
 ----
 
 
-Not only bean type proxy can be created. Interface for builders can be defined/
-
+Not only bean type proxy can be created. Interface for builders can be defined
 
 .Defined builder interfaces
 [source,java]
@@ -153,7 +152,7 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
 
 ## Supported options in MapProxy
 
-Options can be defined to the MapProxy's builder. For example:
+Options can be defined for the MapProxy's builder. For example:
 
 .Immutable option added
 [source,java]
@@ -163,14 +162,13 @@ MapProxy.builder(User.class).withImmutable(true).newInstance();
 
 
 - immutable (default `false`)
-It defines that the fields and collection in the created proxy is immutable, so all operation call cause `IllegalStateException`
+It defines that the fields and collection in the created proxy is immutable, so all operation calls cause `IllegalStateException`
 - nullSafeCollection (default `false`)
-If it is defined, when a collection is not set in the map an empty collection returns. Means the collection in interface never be null.
+If it is defined, when a collection is not set in the map an empty collection will be returned. Which means that the collection in the interface can never be null.
 - identifierField (default `none`)
-Special field which can be used to determinate equality of 2 instance. When it is not defined the String representation of the 2 objects is used for `equals`
+Special field which can be used to determinate equality of 2 instances. When it is not defined the String representation of the 2 objects is used for `equals`
 - enumMappingMethod (default `name`)
-When enum type defined as a field, have to be defined what type of representation is coded in the map. `name` menas the name of enum value is used. `getOrdinal` means the ordinal value. Any other specific method can be used whic is defined in the enum type.
-
+When an enum type is defined as a field, we need to define what type of representation is coded in the map.
 
 ## Supported options in MapBuilderProxy
 
@@ -191,4 +189,4 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).withBuilderMe
 It defines that the buidler method can have prefix. By default the builder methods match with the field name. With this option
 it can be renamed.
 - enumMappingMethod (default `name`)
-When enum type defined as a field, have to be defined what type of representation is coded in the map. `name` menas the name of enum value is used. `getOrdinal` means the ordinal value. Any other specific method can be used whic is defined in the enum type.
+When an enum type is defined as a field, we need to define what type of representation is coded in the map.

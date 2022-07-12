@@ -31,12 +31,6 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_SECRET_KEYS }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: 🖨️ List GPG keys
-        run: gpg --list-keys
-
-      - name: 🖨️ Grep config
-        run: gpg --version
-
       - name: 🛠️ Set up JDK 11
         uses: actions/setup-java@v2
         with:
