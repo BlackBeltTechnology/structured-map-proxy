@@ -64,4 +64,9 @@ public interface User extends Entity {
 
     void setCountry(Country country);
 
+    Optional<Country> getBirthCountry();
+
+    void setBirthCountry(Country country);
+
+
 }
