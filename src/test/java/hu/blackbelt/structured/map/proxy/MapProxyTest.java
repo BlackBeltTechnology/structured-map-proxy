@@ -93,6 +93,7 @@ public class MapProxyTest {
                 .get(((MapHolder) userDetail4).toMap())).get("id"));
 
         assertThat(user.getCountry().getName(), is("Austria"));
+
     }
 
     @Test
@@ -114,7 +115,13 @@ public class MapProxyTest {
         user.setMapWithoutType(ImmutableMap.of("k1", "v1"));
         user.setMapWithValueType(ImmutableMap.of("k1", userDetail3));
         user.setMapWithValueTypeAndKeyType(ImmutableMap.of(userDetail4, userDetail5));
+        user.setBirthCountry(Country.AT);
+
         performStructuralTestCases();
+
+        assertEquals(Optional.of(Country.AT), user.getBirthCountry());
+        assertEquals(Country.AT.toString(), getMapValue(user, "birthCountry", Country.class));
+
     }
 
     @Test
@@ -126,6 +133,7 @@ public class MapProxyTest {
         prepared.put("email", Optional.of("test@test.com"));
         prepared.put("loginName", Optional.of("teszt"));
         prepared.put("lastLoginTime", Optional.of(time));
+        prepared.put("birthCountry", Optional.of(Country.AT.getOrdinal()));
 
         user = MapProxy.builder(User.class).
                 withMap(prepared)
@@ -143,6 +151,10 @@ public class MapProxyTest {
 
         assertThat(map.get("firstName"), is(nullValue()));
         assertThat(user.getFirstName(), is(Optional.empty()));
+
+        assertThat(map.get("birthCountry"), is(Country.AT.getOrdinal()));
+        assertThat(user.getBirthCountry(), is(Optional.of(Country.AT)));
+
     }
 
     @Test
@@ -173,12 +185,18 @@ public class MapProxyTest {
         prepared.put("simpleUserDetail", null);
         prepared.put("sms", null);
         prepared.put("country", 3);
+        prepared.put("birthCountry", Country.AT.getOrdinal());
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(true)
                 .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
+
         performStructuralTestCases();
+
+        assertEquals(Optional.of(Country.AT), user.getBirthCountry());
+        assertEquals(3, getMapValue(user, "birthCountry", Country.class));
+
     }
 
     @Test
