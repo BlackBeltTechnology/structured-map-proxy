@@ -196,6 +196,8 @@ public final class MapProxy implements InvocationHandler {
                         } else {
                             throw new IllegalArgumentException(String.format("The attribute %s in %s is Optional. The Optional's generic type have to be interface.", attrName, sourceClass.getName()));
                         }
+                    } else if (optionalType.isEnum()) {
+                        internal.put(attrName, createEnumValue(value, optionalType));
                     } else if (optionalType.isAssignableFrom(value.getClass())) {
                         internal.put(attrName, value);
                     }
