@@ -2,7 +2,7 @@
 
 ## What is this library about?
 
-It combines interface based proxys with java.util.Map backends. This means that you can define typesafe handlers to dynamic strcutures as Map and Collection of maps over the Map and Collection defined generics.
+It combines interface based proxies with java.util.Map backends. This means that you can define typesafe handlers to dynamic strcutures as Map and Collection of maps over the Map and Collection defined generics.
 
 It can handle nested interfaces too, so all types of structures can be defined with a structure of interfaces.
 
