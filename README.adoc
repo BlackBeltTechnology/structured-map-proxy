@@ -1,14 +1,18 @@
-# structured-map-proxy
+= structured-map-proxy
 
-## What is this library about?
+image::https://github.com/BlackBeltTechnology/structured-map-proxy/actions/workflows/build.yml/badge.svg?branch=develop[link="https://github.com/BlackBeltTechnology/structured-map-proxy/actions/workflows/build.yml" float="center"]
 
-It combines interface based proxies with java.util.Map backends. This means that you can define typesafe handlers to dynamic strcutures as Map and Collection of maps over the Map and Collection defined generics.
+== What is this library about?
+
+It combines interface based proxies with java.util.Map backends. This means that you can define typesafe handlers to
+dynamic structures as Map and Collection of maps over the Map and Collection defined generics.
 
 It can handle nested interfaces too, so all types of structures can be defined with a structure of interfaces.
 
-The map entries and interface methods are mapped as per the JavaBean standard specification. This results in for example: a String named as `stringValue` in a Map to have a corresponding interface containing `getStringValue` and `setStringValue`.
+The map entries and interface methods are mapped as per the JavaBean standard specification. This results in for example:
+a String named as `stringValue` in a Map to have a corresponding interface containing `getStringValue` and `setStringValue`.
 
-## Usage
+== Usage
 
 Add the following to your pom.xml:
 
@@ -22,12 +26,11 @@ Add the following to your pom.xml:
 </dependency>
 ----
 
-## Example:
+== Example:
 
 In this example we have a `User` which can have a `UserDetail` as a single and containment collection.
 
-
-### Define getters/and setters in interfaces
+=== Define getters/and setters in interfaces
 
 [source,java]
 ----
@@ -74,8 +77,7 @@ public interface UserDetail {
 }
 ----
 
-
-### Create a Proxy from a Map
+=== Create a Proxy from a Map
 
 [source,java]
 ----
@@ -95,8 +97,7 @@ User user = MapProxy.builder(User.class)
 user.setEmail("another@example.com");
 ----
 
-
-### Create a Map from a Proxy
+=== Create a Map from a Proxy
 
 [source,java]
 ----
@@ -121,8 +122,7 @@ Map<String, Object> mapRepresentation = ((MapHolder) user).toMap();
 
 > Not only Bean-type proxies are supported. Interfaces for builders can also be defined
 
-
-### Define builder interfaces
+=== Define builder interfaces
 
 [source,java]
 ----
@@ -142,8 +142,7 @@ public interface UserBuilder {
 }
 ----
 
-
-### Create a Proxy builder for a type
+=== Create a Proxy builder for a type
 
 [source,java]
 ----
@@ -154,10 +153,9 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
      .build();
 ----
 
+== Supported options in MapProxy
 
-## Supported options in MapProxy
-
-### Immutable option example
+=== Immutable option example
 
 [source,java]
 ----
@@ -175,11 +173,12 @@ Special field which can be used to determinate equality of 2 instances. When it 
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
 
-## Supported options in MapBuilderProxy
+== Supported options in MapBuilderProxy
 
 The MapBuilderProxy's builder supports additional options. For example:
 
-### Adding a Builder method prefix
+=== Adding a Builder method prefix
+
 [source,java]
 ----
 User user = MapBuilderProxy.builder(UserBuilder.class, User.class).withBuilderMethodPrefix("with").newInstance()
@@ -188,7 +187,6 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).withBuilderMe
      .loginName("teszt")
      .build();
 ----
-
 
 - builderMethodPrefix (default `false`)
 It defines whether the buidler method can have a prefix or not. By default the builder method names match with the field name. With this option you can rename them.
