@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: ⏳ Build, test and deploy artifacts
+    name: ⏳ Dependabot test build
     runs-on: judong
     timeout-minutes: 30
     if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
