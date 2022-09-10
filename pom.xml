@@ -388,23 +388,14 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
+                        <groupId>org.simplify4u.plugins</groupId>
+                        <artifactId>sign-maven-plugin</artifactId>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
-                                <configuration>
-                                    <!-- This is necessary for gpg to not try to use the pinentry programs -->
-                                    <gpgArguments>
-                                        <arg>--pinentry-mode</arg>
-                                        <arg>loopback</arg>
-                                    </gpgArguments>
-                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
@@ -412,20 +403,19 @@
             </build>
         </profile>
 
-
         <profile>
-			<id>release-dummy</id>
-			<distributionManagement>
-				<snapshotRepository>
-					<id>dummy-distribution</id>
-					<url>file:///tmp/${project.groupId}-${project.artifactId}-${project.version}/maven-snapshot/</url>
-				</snapshotRepository>
-				<repository>
-					<id>dummy-distribution</id>
-					<url>file:///tmp/${project.groupId}-${project.artifactId}-${project.version}/maven-release/</url>
-				</repository>
-			</distributionManagement>
-		</profile>
+            <id>release-dummy</id>
+            <distributionManagement>
+                <snapshotRepository>
+                    <id>dummy-distribution</id>
+                    <url>file:///tmp/${project.groupId}-${project.artifactId}-${project.version}/maven-snapshot/</url>
+                </snapshotRepository>
+                <repository>
+                    <id>dummy-distribution</id>
+                    <url>file:///tmp/${project.groupId}-${project.artifactId}-${project.version}/maven-release/</url>
+                </repository>
+            </distributionManagement>
+        </profile>
 
         <profile>
             <id>release-judong</id>
@@ -597,7 +587,7 @@
         
         <profile>
             <id>update-source-code-license</id>
-			<build>
+            <build>
                 <plugins>
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>

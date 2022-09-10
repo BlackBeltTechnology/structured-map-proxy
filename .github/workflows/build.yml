@@ -12,6 +12,10 @@ jobs:
     name: ⏳ Build, test and deploy artifacts
     runs-on: judong
     timeout-minutes: 30
+    env:
+      SIGN_KEY_ID: ${{ secrets.GPG_KEYNAME }}
+      SIGN_KEY_PASS: ${{ secrets.GPG_PASSPHRASE }}
+      SIGN_KEY: ${{ secrets.GPG_SECRET_KEYS }}
     if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -25,13 +29,6 @@ jobs:
       - name: 🛠️ Project context
         id: context
         uses: zero88/gh-project-context@v1.1
-
-      - name: 💉 Import GPG key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v4
-        with:
-          gpg_private_key: ${{ secrets.GPG_SECRET_KEYS }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: 🛠️ Set up JDK 11
         uses: actions/setup-java@v2
@@ -122,10 +119,19 @@ jobs:
           -Dmaven.test.skip=true \
           deploy
 
+      - name: 🔎 Sonar Metrics
+        if: steps.context.outputs.branch == 'develop'
+        continue-on-error: true
+        run: |-
+          ./mvnw -B -Dstyle.color=always \
+          -Dsonar.projectKey=structured-map-proxy \
+          -Dsonar.host.url=https://sonar.judo.technology \
+          -Dsonar.login=${{ secrets.JUDO_SONAR_TOKEN }} \
+          sonar:sonar
+
 ##########################
 # MAVEN BUILD END
 ##########################
-
 
       - name: 📌 Create version tag
         uses: actions/github-script@v5
