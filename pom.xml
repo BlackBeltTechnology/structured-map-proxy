@@ -58,11 +58,12 @@
         <surefire-version>3.0.0-M7</surefire-version>
 
         <!-- Code Quality-->
-        <sonar-maven-plugin-version>3.7.0.1746</sonar-maven-plugin-version>
+        <sonar-maven-plugin-version>3.9.1.2184</sonar-maven-plugin-version>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
         <sonar.language>java</sonar.language>
-        <sonar.java.source>${maven.compiler.source}</sonar.java.source>
+        <sonar.java.source>${java.version}</sonar.java.source>
+        <jacoco.version>0.8.8</jacoco.version>
     </properties>
 
     <url>http://github.com/${project-repositoryId}</url>
@@ -208,13 +209,22 @@
 
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.0.0-M7</version>
+                    <version>${surefire-version}</version>
                     <configuration>
-                        <argLine>-Dfile.encoding=UTF-8</argLine>
                         <trimStackTrace>false</trimStackTrace>
                         <systemPropertyVariables>
-                            <log4j.configuration>${log4j.configuration}</log4j.configuration>
+                            <logback.configurationFile>${logback-test-config}</logback.configurationFile>
                         </systemPropertyVariables>
+                        <!--suppress UnresolvedMavenProperty -->
+                        <argLine>
+                            ${jacoco.agent}
+                            -Dfile.encoding=UTF-8
+                            --add-opens java.base/java.lang=ALL-UNNAMED
+                            --add-opens java.base/java.util=ALL-UNNAMED
+                            --add-opens java.base/java.time=ALL-UNNAMED
+                            --add-opens java.base/java.net=ALL-UNNAMED
+                        </argLine>
+                        <trimStackTrace>false</trimStackTrace>
                     </configuration>
                 </plugin>
 
@@ -343,6 +353,29 @@
                         <phase>clean</phase>
                         <goals>
                             <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <propertyName>jacoco.agent</propertyName>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>jacoco-initialize</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <goals>
+                            <goal>report</goal>
                         </goals>
                     </execution>
                 </executions>
