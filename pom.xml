@@ -51,11 +51,11 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <slf4j-version>2.0.0</slf4j-version>
-        <sonar-maven-plugin-version>3.7.0.1746</sonar-maven-plugin-version>
 
         <log4j.configuration>log4j.properties</log4j.configuration>
 
         <!-- Code Quality-->
+        <sonar-maven-plugin-version>3.7.0.1746</sonar-maven-plugin-version>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
         <sonar.language>java</sonar.language>
@@ -480,7 +480,7 @@
                 <asciidoctor.maven.plugin.version>2.2.2</asciidoctor.maven.plugin.version>
                 <asciidoctorj.version>2.5.5</asciidoctorj.version>
                 <asciidoctorj.diagram.version>2.2.3</asciidoctorj.diagram.version>
-                <jruby.version>9.3.7.0</jruby.version>
+                <jruby.version>9.3.4.0</jruby.version>
             </properties>
 
             <build>
