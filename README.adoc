@@ -192,3 +192,13 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).withBuilderMe
 It defines whether the buidler method can have a prefix or not. By default the builder method names match with the field name. With this option you can rename them.
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
+
+
+== Contributing to the project
+
+Everyone is welcome to contribute to structured-map-proxy! As a starter, please read the corresponding link:CONTRIBUTING.adoc[CONTRIBUTING] guide for details!
+
+
+== License
+
+This project is licensed under the https://www.apache.org/licenses/LICENSE-2.0[Apache License 2.0].

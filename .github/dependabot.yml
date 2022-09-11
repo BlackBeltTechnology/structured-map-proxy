@@ -8,6 +8,5 @@ updates:
   open-pull-requests-limit: 10
   ignore:
   - dependency-name: com.google.guava:guava
-    update_types: ["version-update:semver-major"]
   - dependency-name: org.slf4j:slf4j-api
-    update_types: ["version-update:semver-major"]
+  - dependency-name: org.jruby:jruby-complete
