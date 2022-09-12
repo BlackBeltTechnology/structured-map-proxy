@@ -8,6 +8,7 @@ jobs:
     name: Add JIRA description to PR
     runs-on: judong
     timeout-minutes: 3
+    if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
     steps:
       - name: 🛂 Enforce Jira Issue Key in Pull Request Title
         if: ${{ github.base_ref == 'develop' && (startsWith(github.head_ref, 'feature') || startsWith(github.head_ref, 'bugfix'))}}

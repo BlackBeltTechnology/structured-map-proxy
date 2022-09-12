@@ -1,5 +1,25 @@
 package hu.blackbelt.structured.map.proxy;
 
+/*-
+ * #%L
+ * Structured map proxy
+ * %%
+ * Copyright (C) 2018 - 2022 BlackBelt Technology
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import hu.blackbelt.structured.map.proxy.entity.Country;
@@ -93,6 +113,7 @@ public class MapProxyTest {
                 .get(((MapHolder) userDetail4).toMap())).get("id"));
 
         assertThat(user.getCountry().getName(), is("Austria"));
+
     }
 
     @Test
@@ -114,7 +135,13 @@ public class MapProxyTest {
         user.setMapWithoutType(ImmutableMap.of("k1", "v1"));
         user.setMapWithValueType(ImmutableMap.of("k1", userDetail3));
         user.setMapWithValueTypeAndKeyType(ImmutableMap.of(userDetail4, userDetail5));
+        user.setBirthCountry(Country.AT);
+
         performStructuralTestCases();
+
+        assertEquals(Optional.of(Country.AT), user.getBirthCountry());
+        assertEquals(Country.AT.toString(), getMapValue(user, "birthCountry", Country.class));
+
     }
 
     @Test
@@ -126,6 +153,7 @@ public class MapProxyTest {
         prepared.put("email", Optional.of("test@test.com"));
         prepared.put("loginName", Optional.of("teszt"));
         prepared.put("lastLoginTime", Optional.of(time));
+        prepared.put("birthCountry", Optional.of(Country.AT.getOrdinal()));
 
         user = MapProxy.builder(User.class).
                 withMap(prepared)
@@ -143,6 +171,10 @@ public class MapProxyTest {
 
         assertThat(map.get("firstName"), is(nullValue()));
         assertThat(user.getFirstName(), is(Optional.empty()));
+
+        assertThat(map.get("birthCountry"), is(Country.AT.getOrdinal()));
+        assertThat(user.getBirthCountry(), is(Optional.of(Country.AT)));
+
     }
 
     @Test
@@ -173,12 +205,18 @@ public class MapProxyTest {
         prepared.put("simpleUserDetail", null);
         prepared.put("sms", null);
         prepared.put("country", 3);
+        prepared.put("birthCountry", Country.AT.getOrdinal());
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(true)
                 .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
+
         performStructuralTestCases();
+
+        assertEquals(Optional.of(Country.AT), user.getBirthCountry());
+        assertEquals(3, getMapValue(user, "birthCountry", Country.class));
+
     }
 
     @Test
