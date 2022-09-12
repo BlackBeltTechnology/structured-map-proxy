@@ -1,15 +1,20 @@
-# structured-map-proxy
+= structured-map-proxy
 
-## What is this library about?
+image::https://github.com/BlackBeltTechnology/structured-map-proxy/actions/workflows/build.yml/badge.svg?branch=develop[link="https://github.com/BlackBeltTechnology/structured-map-proxy/actions/workflows/build.yml" float="center"]
 
-It can hanlde to make interface based proxys with java.util.Map backend. Which means you can define typesafe handlers to dynamic strcutures as Map and Collection of maps over the Map and Collection defined generics.
-It can handle referenced other interfaces too, so all type of structures can be defined with a structure of interfaces.
-The map entries and interface methods are mapped as JavaBean standard descibes. Means to map 
-a String named as `stringValue` in map have to be mapped in interface as `getStringValue` and `setStringValue`
+== What is this library about?
 
-## How to use?
+It combines interface based proxies with java.util.Map backends. This means that you can define typesafe handlers to
+dynamic structures as Map and Collection of maps over the Map and Collection defined generics.
 
-Add to your pom.xml:
+It can handle nested interfaces too, so all types of structures can be defined with a structure of interfaces.
+
+The map entries and interface methods are mapped as per the JavaBean standard specification. This results in for example:
+a String named as `stringValue` in a Map to have a corresponding interface containing `getStringValue` and `setStringValue`.
+
+== Usage
+
+Add the following to your pom.xml:
 
 [source,xml]
 ----
@@ -21,12 +26,12 @@ Add to your pom.xml:
 </dependency>
 ----
 
-## Example:
+== Example:
 
-In this example there is an User which can contain UserDetail as a single and containment collection.
+In this example we have a `User` which can have a `UserDetail` as a single and containment collection.
 
+=== Define getters/and setters in interfaces
 
-.Define getters/and setters in interface
 [source,java]
 ----
 public interface Entity extends Serializable {
@@ -72,8 +77,8 @@ public interface UserDetail {
 }
 ----
 
+=== Create a Proxy from a Map
 
-.Create proxy from Map
 [source,java]
 ----
 // Create map represents fields.
@@ -92,8 +97,8 @@ User user = MapProxy.builder(User.class)
 user.setEmail("another@example.com");
 ----
 
+=== Create a Map from a Proxy
 
-.Create Map from proxy
 [source,java]
 ----
 // Create an empty proxy
@@ -115,10 +120,10 @@ user.setUserDetails(ImmutableList.of(userDetail1, userDetail2));
 Map<String, Object> mapRepresentation = ((MapHolder) user).toMap();
 ----
 
+> Not only Bean-type proxies are supported. Interfaces for builders can also be defined
 
-Not only bean type proxy can be created. Interface for builders can be defined
+=== Define builder interfaces
 
-.Defined builder interfaces
 [source,java]
 ----
 public interface UserBuilder {
@@ -137,8 +142,8 @@ public interface UserBuilder {
 }
 ----
 
+=== Create a Proxy builder for a type
 
-.Create proxy builder for type
 [source,java]
 ----
 User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
@@ -148,33 +153,32 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
      .build();
 ----
 
+== Supported options in MapProxy
 
+=== Immutable option example
 
-## Supported options in MapProxy
-
-Options can be defined for the MapProxy's builder. For example:
-
-.Immutable option added
 [source,java]
 ----
 MapProxy.builder(User.class).withImmutable(true).newInstance();
 ----
 
+MapProxy supports the following options:
 
 - immutable (default `false`)
-It defines that the fields and collection in the created proxy is immutable, so all operation calls cause `IllegalStateException`
+Adjusts the fields and collections in the created proxy as immutable, which results in all mutating operation calls triggering an `IllegalStateException`
 - nullSafeCollection (default `false`)
-If it is defined, when a collection is not set in the map an empty collection will be returned. Which means that the collection in the interface can never be null.
+If set to `true` and given a collection is not set in the map, an empty collection will be returned. Which means that the collection in the interface can never be null.
 - identifierField (default `none`)
 Special field which can be used to determinate equality of 2 instances. When it is not defined the String representation of the 2 objects is used for `equals`
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
 
-## Supported options in MapBuilderProxy
+== Supported options in MapBuilderProxy
 
-Options can be defined to the MapBuilderProxy's builder. For example:
+The MapBuilderProxy's builder supports additional options. For example:
 
-.Builder method prefix option added
+=== Adding a Builder method prefix
+
 [source,java]
 ----
 User user = MapBuilderProxy.builder(UserBuilder.class, User.class).withBuilderMethodPrefix("with").newInstance()
@@ -184,9 +188,17 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).withBuilderMe
      .build();
 ----
 
-
 - builderMethodPrefix (default `false`)
-It defines that the buidler method can have prefix. By default the builder methods match with the field name. With this option
-it can be renamed.
+It defines whether the buidler method can have a prefix or not. By default the builder method names match with the field name. With this option you can rename them.
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
+
+
+== Contributing to the project
+
+Everyone is welcome to contribute to structured-map-proxy! As a starter, please read the corresponding link:CONTRIBUTING.adoc[CONTRIBUTING] guide for details!
+
+
+== License
+
+This project is licensed under the https://www.apache.org/licenses/LICENSE-2.0[Apache License 2.0].
