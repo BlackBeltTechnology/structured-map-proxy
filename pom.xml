@@ -30,7 +30,7 @@
     </developers>
 
     <properties>
-        <revision>1.2.0</revision>
+        <revision>1.2.1-SNAPSHOT</revision>
         <maven>3.8.3</maven>
 
         <project-shortname>structured-map-proxy</project-shortname>
