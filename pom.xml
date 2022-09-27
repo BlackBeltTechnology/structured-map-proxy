@@ -30,7 +30,7 @@
     </developers>
 
     <properties>
-        <revision>1.1.0</revision>
+        <revision>1.2.0</revision>
         <maven>3.8.3</maven>
 
         <project-shortname>structured-map-proxy</project-shortname>
@@ -105,7 +105,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.4.0</version>
+            <version>1.4.1</version>
             <scope>provided</scope>
         </dependency>
 
@@ -138,7 +138,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.9.0</version>
+            <version>5.9.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -208,6 +208,18 @@
                 </plugin>
 
                 <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${sonar-maven-plugin-version}</version>
+                </plugin>
+
+                <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${surefire-version}</version>
                     <configuration>
@@ -224,7 +236,6 @@
                             --add-opens java.base/java.time=ALL-UNNAMED
                             --add-opens java.base/java.net=ALL-UNNAMED
                         </argLine>
-                        <trimStackTrace>false</trimStackTrace>
                     </configuration>
                 </plugin>
 
@@ -461,14 +472,13 @@
                 </repository>
             </distributionManagement>
         </profile>
-
-
+        
         <profile>
             <id>generate-github-asciidoc-diagrams</id>
 
             <properties>
                 <asciidoctor.maven.plugin.version>2.2.2</asciidoctor.maven.plugin.version>
-                <asciidoctorj.version>2.5.5</asciidoctorj.version>
+                <asciidoctorj.version>2.5.6</asciidoctorj.version>
                 <asciidoctorj.diagram.version>2.2.3</asciidoctorj.diagram.version>
                 <jruby.version>9.3.4.0</jruby.version>
             </properties>
