@@ -199,6 +199,35 @@ public class MapProxyTest {
     }
 
     @Test
+    public void testKeyAnnotation() {
+        Map<String, Object> prepared = new HashMap<>();
+        prepared.put("xmiid_key", "ID");
+
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(true)
+                .withIdentifierField("id")
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        Map map = ((MapHolder) user).toMap();
+
+        assertThat(map.get("xmiid_key"), is(equalTo("ID")));
+        assertThat(user.getXmiid(), is(equalTo("ID")));
+
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(false)
+                .withIdentifierField("id")
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        user.setXmiid("T1");
+        map = ((MapHolder) user).toMap();
+        assertThat(map.get("xmiid_key"), is(equalTo("T1")));
+        assertThat(user.getXmiid(), is(equalTo("T1")));
+
+    }
+
+    @Test
     public void testBuildFromMap() {
         Map<String, Object> prepared = new HashMap<>();
         prepared.put("active", true);
