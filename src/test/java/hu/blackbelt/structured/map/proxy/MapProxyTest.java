@@ -154,6 +154,7 @@ public class MapProxyTest {
         prepared.put("loginName", Optional.of("teszt"));
         prepared.put("lastLoginTime", Optional.of(time));
         prepared.put("birthCountry", Optional.of(Country.AT.getOrdinal()));
+        prepared.put("lastName", null);
 
         user = MapProxy.builder(User.class).
                 withMap(prepared)
@@ -170,11 +171,26 @@ public class MapProxyTest {
         assertThat(user.getLastLoginTime(), is(time));
 
         assertThat(map.get("firstName"), is(nullValue()));
-        assertThat(user.getFirstName(), is(Optional.empty()));
+        assertThat(user.getFirstName(), is(nullValue()));
+
+        assertThat(map.get("lastName"), is(nullValue()));
+        assertThat(user.getLastName(), is(Optional.empty()));
 
         assertThat(map.get("birthCountry"), is(Country.AT.getOrdinal()));
         assertThat(user.getBirthCountry(), is(Optional.of(Country.AT)));
 
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(true)
+                .withIdentifierField("id")
+                .withMapNullToOptionalAbsent(true)
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        assertThat(map.get("firstName"), is(nullValue()));
+        assertThat(user.getFirstName(), is(Optional.empty()));
+
+        assertThat(map.get("lastName"), is(nullValue()));
+        assertThat(user.getLastName(), is(Optional.empty()));
     }
 
     @Test
