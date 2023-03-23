@@ -20,6 +20,8 @@ package hu.blackbelt.structured.map.proxy.entity;
  * #L%
  */
 
+import hu.blackbelt.structured.map.proxy.annotation.Key;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
@@ -56,6 +58,7 @@ public interface User extends Entity {
     void setNotificationSms(Boolean notificationSms);
     String getSms();
     void setSms(String sms);
+    @Key(name = "xmiid_key")
     String getXmiid();
     void setXmiid(String xmiid);
 

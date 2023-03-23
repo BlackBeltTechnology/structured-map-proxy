@@ -20,6 +20,8 @@ package hu.blackbelt.structured.map.proxy.entity;
  * #L%
  */
 
+import hu.blackbelt.structured.map.proxy.annotation.Key;
+
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
