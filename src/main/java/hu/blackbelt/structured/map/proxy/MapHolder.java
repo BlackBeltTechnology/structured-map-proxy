@@ -28,4 +28,5 @@ public interface MapHolder {
 
     Map<String, Object> getOriginalMap();
 
+    <T> T adaptTo(Class<T> clazz);
 }
