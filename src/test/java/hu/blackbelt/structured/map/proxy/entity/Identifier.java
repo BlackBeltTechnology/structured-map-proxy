@@ -20,31 +20,18 @@ package hu.blackbelt.structured.map.proxy.entity;
  * #L%
  */
 
-import hu.blackbelt.structured.map.proxy.annotation.Embedded;
 import hu.blackbelt.structured.map.proxy.annotation.Key;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public interface Entity extends Serializable {
-    @Embedded
-    Identifier getCompositeIdentifier();
-    void setCompositeIdentifier(Identifier identifier);
-
+public interface Identifier extends Serializable {
+    @Key(name = "__id")
     Serializable getId();
     void setId(Serializable id);
-    String getGuid();
-    void setGuid(String guid);
-    @Key(name = "xmiid_key")
-    String getXmiid();
-    void setXmiid(String xmiid);
-    String getAuditCreateUser();
-    void setAuditCreateUser(String auditCreateUser);
-    LocalDateTime getAuditCreateTime();
-    void setAuditCreateTime(LocalDateTime auditCreateTime);
-    String getAuditUpdateUser();
-    void setAuditUpdateUser(String auditUpdateUser);
-    LocalDateTime getAuditUpdateTime();
-    void setAuditUpdateTime(LocalDateTime auditUpdateTime);
+
+    @Key(name = "__type")
+    String getType();
+    void setType(String type);
 
 }

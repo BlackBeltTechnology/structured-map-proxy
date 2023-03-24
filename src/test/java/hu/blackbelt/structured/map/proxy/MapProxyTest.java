@@ -22,10 +22,7 @@ package hu.blackbelt.structured.map.proxy;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import hu.blackbelt.structured.map.proxy.entity.Country;
-import hu.blackbelt.structured.map.proxy.entity.Event;
-import hu.blackbelt.structured.map.proxy.entity.User;
-import hu.blackbelt.structured.map.proxy.entity.UserDetail;
+import hu.blackbelt.structured.map.proxy.entity.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -191,6 +188,44 @@ public class MapProxyTest {
 
         assertThat(map.get("lastName"), is(nullValue()));
         assertThat(user.getLastName(), is(Optional.empty()));
+    }
+
+    @Test
+    public void testEmbedded() {
+        Map<String, Object> prepared = new HashMap<>();
+        LocalDateTime time = LocalDateTime.of(2022, 2, 2, 22, 22, 22);
+        prepared.put("__id", "ID");
+        prepared.put("__type", "USER");
+
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(true)
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        Map map = ((MapHolder) user).toMap();
+        assertThat(map.get("__id"), is("ID"));
+        assertThat(map.get("__type"), is("USER"));
+
+        assertThat(user.getCompositeIdentifier().getId(), is("ID"));
+        assertThat(user.getCompositeIdentifier().getType(), is("USER"));
+
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(false)
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        user.setCompositeIdentifier(MapProxy.builder(Identifier.class)
+                .withMap(ImmutableMap.of("__id", "ID2", "__type", "USER"))
+                .newInstance());
+
+        map = ((MapHolder) user).toMap();
+
+        assertThat(map.get("__id"), is("ID2"));
+        assertThat(map.get("__type"), is("USER"));
+
+        assertThat(user.getCompositeIdentifier().getId(), is("ID2"));
+        assertThat(user.getCompositeIdentifier().getType(), is("USER"));
+
     }
 
     @Test

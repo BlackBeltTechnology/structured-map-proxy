@@ -34,9 +34,22 @@ In this example we have a `User` which can have a `UserDetail` as a single and c
 
 [source,java]
 ----
-public interface Entity extends Serializable {
+
+public interface Identifier extends Serializable {
+    @Key(name = "__id")
     Serializable getId();
     void setId(Serializable id);
+
+    @Key(name = "__type")
+    String getType();
+    void setType(String id);
+}
+
+
+public interface Entity extends Serializable {
+    @Embedded
+    Identifier getId();
+    void setId(Identifier id);
 }
 
 public interface User extends Entity {
@@ -52,6 +65,7 @@ public interface User extends Entity {
     Optional<String> getFirstName();
     void setFirstName(String firstName);
 
+    @Key(name = "last_name")
     Optional<String> getLastName();
     void setLastName(String lastName);
 
@@ -69,8 +83,9 @@ public interface User extends Entity {
 }
 
 public interface UserDetail {
-    String getId();
-    void setId(String id);
+    @Embedded
+    Identifier getId();
+    void setId(Identifier id);
 
     String getNote();
     void setNote(String note);
@@ -84,11 +99,13 @@ public interface UserDetail {
 // Create map represents fields.
 Map<String, Object> prepared = new HashMap<>();
 prepared.put("active", true);
-prepared.put("id", "1");
+prepared.put("__id", "1");
+prepared.put("__type", "user");
 prepared.put("email", Optional.of("test@test.com"));
 prepared.put("loginName", Optional.of("teszt"));
 prepared.put("lastLoginTime", Optional.of(time));
-prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("id", "1", "note", "Note1")));
+prepared.put("last_name", Optional.of("teszt"));
+prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("__id", "1", "__type", "UserDetail", "note", "Note1")));
 
 User user = MapProxy.builder(User.class)
         .withMap(prepared)
@@ -105,14 +122,14 @@ user.setEmail("another@example.com");
 User user = MapProxy.builder(User.class).newInstance();
 user.setActive(true);
 user.setLoginName("teszt");
-user.setId("1");
+user.setId(MapProxy.builder(Identifier.class).id("1").type("User").newInstance());
 
 UserDetail userDetail1 = MapProxy.builder(UserDetail.class).newInstance();
-userDetail1.setId("1");
+userDetail1.setId(MapProxy.builder(Identifier.class).id("1").type("UserDetail").newInstance());
 userDetail1.setNote("Note1");
 
 UserDetail userDetail2 = MapProxy.builder(UserDetail.class).newInstance();
-userDetail2.setId("2");
+userDetail2.setId(MapProxy.builder(Identifier.class).id("2").type("UserDetail").newInstance());
 userDetail2.setNote("Note2");
 
 user.setUserDetails(ImmutableList.of(userDetail1, userDetail2));
@@ -147,7 +164,7 @@ public interface UserBuilder {
 [source,java]
 ----
 User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
-     .id("1")
+     .id(MapProxy.builder(Identifier.class).id("1").type("User").newInstance())
      .active(true)
      .loginName("teszt")
      .build();
@@ -172,6 +189,8 @@ If set to `true` and given a collection is not set in the map, an empty collecti
 Special field which can be used to determinate equality of 2 instances. When it is not defined the String representation of the 2 objects is used for `equals`
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
+- mapNullToOptionalAbsent (default `false`)
+When it is true, when the value not set or absent in the given map it will return Optional.isPresent() false.
 
 == Supported options in MapBuilderProxy
 
