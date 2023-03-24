@@ -77,4 +77,7 @@ public interface User extends Entity {
     Optional<Country> getBirthCountry();
 
     void setBirthCountry(Country country);
+
+    <T> T adaptTo(Class<T> clazz);
+
 }

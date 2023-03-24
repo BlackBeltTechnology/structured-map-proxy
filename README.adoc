@@ -194,7 +194,7 @@ When it is true, when the value not set or absent in the given map it will retur
 
 == Supported options in MapBuilderProxy
 
-The MapBuilderProxy's builder supports additional options. For example:
+The MapBuilderProxy's builder supports all options from MapProxy and additional options. For example:
 
 === Adding a Builder method prefix
 
@@ -212,6 +212,50 @@ It defines whether the buidler method can have a prefix or not. By default the b
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
 
+== Annotations
+
+There are annotations which helps to configure the mapping between Map and the interface.
+The annotations have to be defined in the getter method.
+
+=== @Key
+
+This annotation is used to define the key name in map for the related field.
+
+=== @Embedded
+
+Sometimes in the Map storing flat information which is better to shown as an separated
+Object in the bean. For example there is some fields which are related and wanto separate
+as different interface.
+
+=== Annotation examples
+
+[source, java]
+----
+public interface Identifier extends Serializable {
+    @Key(name = "__id")
+    Serializable getId();
+    void setId(Serializable id);
+
+    @Key(name = "__type")
+    String getType();
+    void setType(String id);
+}
+
+
+public interface Entity extends Serializable {
+    @Embedded
+    Identifier getId();
+    void setId(Identifier id);
+
+    String getName();
+    void setName(String name);
+
+}
+----
+
+In this example the Entity's map will contain `__type` and `__id` fields with `name`.
+So in the Map it is flattened, bu8t from MapProxy it can be accessed as an embedded
+MapProxy.
 
 == Contributing to the project
 
