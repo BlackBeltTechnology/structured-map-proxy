@@ -148,15 +148,25 @@ public final class MapProxy implements InvocationHandler {
 
     private static <T> T newInstance(Map<String, ?> map, Class clazz, MapProxyParams params) {
         try {
+            Set<Class> interfaces = getWithSuperClasses(clazz, MapHolder.class);
             return (T) java.lang.reflect.Proxy.newProxyInstance(
                     new CompositeClassLoader(clazz.getClassLoader(), MapHolder.class.getClassLoader()),
-                    new Class[]{clazz, MapHolder.class},
+                    interfaces.toArray(new Class[interfaces.size()]),
                     new MapProxy(clazz, map, params));
         } catch (IntrospectionException e) {
             throw new IllegalArgumentException("Could not create instance", e);
         }
     }
 
+    private static Set<Class> getWithSuperClasses(Class ...classes) {
+        Set<Class> out = new HashSet<>();
+        for (Class o : classes) {
+            Class subclass = o;
+            out.add(subclass);
+            out.addAll(getWithSuperClasses(subclass.getInterfaces()));
+        }
+        return out;
+    }
     @AllArgsConstructor
     @Getter
     private static class AttributeInfo {
@@ -170,25 +180,33 @@ public final class MapProxy implements InvocationHandler {
     private static CacheLoader<Class, Map<String, AttributeInfo>> typeInfoCacheLoader = new CacheLoader<Class, Map<String, AttributeInfo>>() {
         @Override
         public Map<String, AttributeInfo> load(Class sourceClass) throws Exception {
-            Map<String, AttributeInfo> targetTypes = new ConcurrentHashMap<>();
-            for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(sourceClass).getPropertyDescriptors()) {
-                String attrName = propertyDescriptor.getName();
-                final Class propertyType = propertyDescriptor.getPropertyType();
-                Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
-
-                String mapKey = attrName;
-                boolean composite = false;
-                if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Embedded.class) != null) {
-                    composite = true;
-                }
-
-                if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class) != null) {
-                    mapKey = propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class).name();
-                }
-
-                targetTypes.put(attrName, new AttributeInfo(mapKey, propertyType, parametrizedType.orElse(null), propertyDescriptor, composite));
+        Map<String, AttributeInfo> targetTypes = new ConcurrentHashMap<>();
+        Set<Class> classesToIntrospect = getWithSuperClasses(sourceClass);
+        Set<PropertyDescriptor> propertyDescriptors = new HashSet<>();
+        for (Class c : classesToIntrospect) {
+            for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
+                propertyDescriptors.add(propertyDescriptor);
             }
-            return targetTypes;
+        }
+
+        for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
+            String attrName = propertyDescriptor.getName();
+            final Class propertyType = propertyDescriptor.getPropertyType();
+            Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
+
+            String mapKey = attrName;
+            boolean composite = false;
+            if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Embedded.class) != null) {
+                composite = true;
+            }
+
+            if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class) != null) {
+                mapKey = propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class).name();
+            }
+
+            targetTypes.put(attrName, new AttributeInfo(mapKey, propertyType, parametrizedType.orElse(null), propertyDescriptor, composite));
+        }
+        return targetTypes;
         }
     };
 
@@ -254,7 +272,9 @@ public final class MapProxy implements InvocationHandler {
                     }
                 } else if (propertyType.isAssignableFrom(value.getClass())) {
                     if (attrInfo != null && attrInfo.composite) {
-                        // Iterate values and put to map
+                        if (!propertyType.isInterface()) {
+                            throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+                        }
                     } else {
                         internal.put(attrInfo.mapKey, value);
                     }
@@ -394,7 +414,24 @@ public final class MapProxy implements InvocationHandler {
         }
         String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
         final Object value = args[0];
-        internal.put(getKeyName(attrName), value);
+        AttributeInfo attributeInfo = typeInfoCache.get(clazz).get(attrName);
+        if (attributeInfo == null || !attributeInfo.isComposite()) {
+            internal.put(getKeyName(attrName), value);
+        } else if (attributeInfo != null && attributeInfo.isComposite() && value instanceof MapHolder) {
+            if (attributeInfo.getPropertyType().isInterface()) {
+                MapHolder proxy = (MapHolder) MapProxy.builder(attributeInfo.getPropertyType())
+                        .withParams(params)
+                        .withMap(((MapHolder) value).toMap())
+                        .newInstance();
+                proxy.toMap().entrySet().forEach(e -> {
+                    internal.put(e.getKey(), e.getValue());
+                });
+            } else {
+                throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+            }
+        } else {
+            internal.put(getKeyName(attrName), value);
+        }
     }
 
     private String getKeyName(String attrName) throws ExecutionException {
@@ -407,32 +444,46 @@ public final class MapProxy implements InvocationHandler {
     }
     private Object proxyGet(Method m) throws ExecutionException {
         String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
-
-        Object value = internal.get(getKeyName(attrName));
-
-        if (params.isNullSafeCollection() && value == null && Collection.class.isAssignableFrom(m.getReturnType())) {
-            if (params.isImmutable()) {
-                value = Collections.EMPTY_LIST;
-            } else {
-                value = new ArrayList<>();
-            }
-        }
-
         AttributeInfo attributeInfo = typeInfoCache.get(clazz).get(attrName);
-        if (attributeInfo != null) {
-            if (Optional.class.isAssignableFrom(attributeInfo.getPropertyType())) {
-                if (value instanceof Optional) {
-                    return value;
+        if (attributeInfo == null || !attributeInfo.isComposite()) {
+            Object value = internal.get(getKeyName(attrName));
+
+            if (params.isNullSafeCollection() && value == null && Collection.class.isAssignableFrom(m.getReturnType())) {
+                if (params.isImmutable()) {
+                    value = Collections.EMPTY_LIST;
                 } else {
-                    if (internal.containsKey(getKeyName(attrName)) || params.isMapNullToOptionalAbsent()) {
-                        return Optional.ofNullable(getValueAs(value, getRawType(attributeInfo.getParameterType(), 0), "Unable to get " + attrName + " attribute as %s"));
+                    value = new ArrayList<>();
+                }
+            }
+
+            if (attributeInfo != null) {
+                if (Optional.class.isAssignableFrom(attributeInfo.getPropertyType())) {
+                    if (value instanceof Optional) {
+                        return value;
                     } else {
-                        return null;
+                        if (internal.containsKey(getKeyName(attrName)) || params.isMapNullToOptionalAbsent()) {
+                            return Optional.ofNullable(getValueAs(value, getRawType(attributeInfo.getParameterType(), 0), "Unable to get " + attrName + " attribute as %s"));
+                        } else {
+                            return null;
+                        }
                     }
                 }
             }
+            return getValueAs(value, m.getReturnType(), "Unable to get " + attrName + " attribute as %s");
+        } else if (attributeInfo != null && attributeInfo.isComposite()) {
+            if (attributeInfo.getPropertyType().isInterface()) {
+                Object proxy = MapProxy.builder(attributeInfo.getPropertyType())
+                        .withParams(params)
+                        .withMap((Map) internal)
+                        .newInstance();
+                return proxy;
+            } else {
+                throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+            }
+        } else {
+            Object value = internal.get(getKeyName(attrName));
+            return getValueAs(value, m.getReturnType(), "Unable to get " + attrName + " attribute as %s");
         }
-        return getValueAs(value, m.getReturnType(), "Unable to get " + attrName + " attribute as %s");
     }
 
     private boolean proxyIs(Method m) throws ExecutionException {
