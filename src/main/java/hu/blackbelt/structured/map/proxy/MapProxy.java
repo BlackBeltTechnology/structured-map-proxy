@@ -34,7 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -52,12 +51,16 @@ import java.util.stream.Collectors;
 @Slf4j
 public final class MapProxy implements InvocationHandler {
 
-    public static final String SET = "set";
-    public static final String GET = "get";
-    public static final String IS = "is";
-    public static final String TO_MAP = "toMap";
-    public static final String GET_ORIGINAL_MAP = "getOriginalMap";
-    public static final String TO_STRING = "toString";
+    public static final String METHOD_SET = "set";
+    public static final String METHOD_GET = "get";
+    public static final String METHOD_IS = "is";
+    public static final String METHOD_TO_MAP = "toMap";
+    public static final String METHOD_GET_ORIGINAL_MAP = "getOriginalMap";
+    public static final String METHOD_TO_STRING = "toString";
+    public static final String METHOD_HASH_CODE = "hashCode";
+    public static final String METHOD_EQUALS = "equals";
+    public static final String METHOD_PARSE = "parse";
+    public static final String METHOD_ADAPT_TO = "adaptTo";
     public static final String DEFAULT_ENUM_MAPPING_METHOD = "name";
 
     private static final Map<Class<?>, Class<?>> PRIMITIVES_TO_WRAPPERS
@@ -72,10 +75,6 @@ public final class MapProxy implements InvocationHandler {
             .put(short.class, Short.class)
             .put(void.class, Void.class)
             .build();
-    public static final String HASH_CODE = "hashCode";
-    public static final String EQUALS = "equals";
-    public static final String PARSE = "parse";
-
 
     private Map<String, ?> original;
     private Map<String, Object> internal;
@@ -227,10 +226,10 @@ public final class MapProxy implements InvocationHandler {
         this.clazz = clazz;
         this.params = params;
 
-        internal = mapToProxyMap(clazz, params, (Map<String, Object>) map);
+        internal = toProxyMap(clazz, params, (Map<String, Object>) map);
     }
 
-    private static Map<String, Object> mapToProxyMap(Class proxyClass, MapProxyParams params, Map<String, Object> map) {
+    private static Map<String, Object> toProxyMap(Class proxyClass, MapProxyParams params, Map<String, Object> map) {
         Map<String, AttributeInfo> typeInfo = null;
         try {
             typeInfo = typeInfoCache.get(proxyClass);
@@ -256,7 +255,7 @@ public final class MapProxy implements InvocationHandler {
                     if (!(value instanceof Collection)) {
                         throw new IllegalArgumentException(String.format("The attribute %s in %s must be collection.", attrName, proxyClass.getName()));
                     }
-                    proxyValue = collectionProxyValue(proxyClass, (Collection) value, proxyPropertyType, parametrizedType.orElse(null), params);
+                    proxyValue = toProxyCollection(proxyClass, (Collection) value, proxyPropertyType, parametrizedType.orElse(null), params);
                 } else if (Optional.class.isAssignableFrom(proxyPropertyType) && parametrizedType.isPresent()) {
                     Class optionalType = getRawType(parametrizedType.orElseThrow(() ->
                             new IllegalStateException(String.format("Optional type attribute %s in %s class does not have generic type.", attrName, proxyClass.getName()))), 0);
@@ -272,11 +271,11 @@ public final class MapProxy implements InvocationHandler {
                     } else if (optionalType.isAssignableFrom(value.getClass())) {
                         proxyValue = value;
                     } else if (optionalType.isEnum()) {
-                        proxyValue = enumProxyValue(params, value, optionalType);
+                        proxyValue = toEnum(params, value, optionalType);
                     }
                 } else if (value instanceof Map) {
                     if (Map.class.isAssignableFrom(proxyPropertyType)) {
-                        proxyValue = mapProxyValue(proxyClass, (Map) value, proxyPropertyType, parametrizedType.orElse(null), params);
+                        proxyValue = toProxyMap(proxyClass, (Map) value, proxyPropertyType, parametrizedType.orElse(null), params);
                     } else if (proxyPropertyType.isInterface()) {
                         proxyValue = MapProxy.builder(proxyPropertyType)
                                 .withParams(params)
@@ -284,7 +283,7 @@ public final class MapProxy implements InvocationHandler {
                                 .newInstance();
                     }
                 } else if (proxyPropertyType.isEnum() && !proxyPropertyType.isAssignableFrom(value.getClass())) {
-                    proxyValue = enumProxyValue(params, value, proxyPropertyType);
+                    proxyValue = toEnum(params, value, proxyPropertyType);
                 } else if (proxyPropertyType.isInterface() && !proxyPropertyType.isAssignableFrom(value.getClass())) {
                     proxyValue = MapProxy.builder(proxyPropertyType)
                             .withParams(params)
@@ -339,28 +338,32 @@ public final class MapProxy implements InvocationHandler {
                 map.put(getKeyName(clazz, attrName), value);
             }
         });
-        mapToProxyMap(clazz, params, map);
+        toProxyMap(clazz, params, map);
         return map;
     }
 
-    private static <T> T objectToBean(Class clazz, MapProxyParams params, Class<T> target, Object object) {
+    private static <T> T toBeanFromObject(Object object, Class proxyClass, Class<T> targetClass, MapProxyParams params) {
         if (object == null) {
             return null;
-        } else if (object instanceof MapProxy) {
-            return mapProxytToBean(clazz, params, target, ((MapHolder) object).toMap());
-        } else if (target.isAssignableFrom(object.getClass())) {
+        } else if (Map.class.isAssignableFrom(targetClass) && targetClass.isAssignableFrom(object.getClass())) {
+            return (T) object;
+        } else if (object instanceof MapHolder) {
+            return toBeanFromMap(((MapHolder) object).toMap(), proxyClass, targetClass, params);
+        } else if (object instanceof Map) {
+            return toBeanFromMap((Map) object, proxyClass, targetClass, params);
+        } else if (targetClass.isAssignableFrom(object.getClass())) {
             return (T) object;
         }
         return null;
     }
 
 
-    private static <T> T mapProxytToBean(Class clazz, MapProxyParams params, Class<T> target, Map proxyMap) {
+    private static <T> T toBeanFromMap(Map proxyMap, Class proxyClass, Class<T> target, MapProxyParams params) {
         Map<String, AttributeInfo> targetInfos = null;
         Map<String, AttributeInfo> beanInfos = null;
 
         try {
-            targetInfos = typeInfoCache.get(clazz);
+            targetInfos = typeInfoCache.get(proxyClass);
             beanInfos = typeInfoCache.get(target);
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
@@ -375,15 +378,71 @@ public final class MapProxy implements InvocationHandler {
                 Method m = finalBeanInfos.get(attrName).propertyDescriptor.getWriteMethod();
                 AttributeInfo beanInfo = finalBeanInfos.get(attrName);
                 final String mapKey = attrInfo.mapKey;
+                Object valueToSet = null;
+                Optional<ParameterizedType> proxyParametrizedType = Optional.ofNullable(attrInfo.getParameterType());
+                Class proxyPropertyType = attrInfo.getPropertyType();
+                if (Optional.class.isAssignableFrom(proxyPropertyType) && proxyParametrizedType.isPresent()) {
+                    getRawType(proxyParametrizedType.orElseThrow(() ->
+                            new IllegalStateException(String.format("Optional type attribute %s in %s class does not have generic type.", attrName, proxyClass.getName()))), 0);
+                }
+                Class beanPropertyType = beanInfo.getPropertyType();
+                Optional<ParameterizedType> beanParametrizedType = Optional.ofNullable(beanInfo.getParameterType());
 
-                if (Collection.class.isAssignableFrom(beanInfo.getPropertyType())) {
-                    if (Collection.class.isAssignableFrom(attrInfo.getPropertyType())) {
-                        throw new IllegalArgumentException(String.format("The attribute %s in %s is collection, but not in in proxy %s type.", attrName, beanInfo.getPropertyType().getName(), attrInfo.getPropertyType()));
+                if (value != null) {
+                    if (Collection.class.isAssignableFrom(beanInfo.getPropertyType())) {
+                        if (!Collection.class.isAssignableFrom(attrInfo.getPropertyType())) {
+                            throw new IllegalArgumentException(String.format("The attribute %s in %s is collection, but not in in proxy %s type.",
+                                    attrName, beanInfo.getPropertyType().getName(), attrInfo.getPropertyType().getName()));
+                        } else if (proxyParametrizedType.isPresent() && !beanParametrizedType.isPresent()) {
+                            throw new IllegalArgumentException(String.format("The attribute %s in %s is collection without generic type, but not in in proxy %s type the generic type is %s.",
+                                    attrName, beanInfo.getPropertyType().getName(), attrInfo.getPropertyType().getName(), proxyParametrizedType.get().getTypeName()));
+                        } else if (!proxyParametrizedType.isPresent() && beanParametrizedType.isPresent()) {
+                            throw new IllegalArgumentException(String.format("The attribute %s in %s is collection generic type is %s, but not in in proxy %s type is without generic type.",
+                                    attrName, beanInfo.getPropertyType().getName(), beanParametrizedType.get().getTypeName(), attrInfo.getPropertyType().getName()));
+                        } else if (proxyParametrizedType.isPresent() && beanParametrizedType.isPresent()) {
+                            valueToSet = toBeanCollection(proxyClass,
+                                    (Collection) value,
+                                    proxyPropertyType,
+                                    proxyParametrizedType.get(),
+                                    beanPropertyType,
+                                    beanParametrizedType.get(),
+                                    params);
+                        } else {
+                            valueToSet = value;
+                        }
+                    } else if (value instanceof MapHolder) {
+                        valueToSet = toBeanFromMap(((MapHolder) value).toMap(), proxyPropertyType, beanPropertyType, params);
+                    } else if (value instanceof Map) {
+                        if (!Map.class.isAssignableFrom(beanInfo.getPropertyType())) {
+                            valueToSet = toBeanFromObject(value, proxyPropertyType, beanPropertyType, params);
+                        } else {
+                            if (proxyParametrizedType.isPresent() && !beanParametrizedType.isPresent()) {
+                                throw new IllegalArgumentException(String.format("The attribute %s in %s is map without generic type, but not in in proxy %s type the generic type is %s.",
+                                        attrName, beanInfo.getPropertyType().getName(), attrInfo.getPropertyType().getName(), proxyParametrizedType.get().getTypeName()));
+                            } else if (!proxyParametrizedType.isPresent() && beanParametrizedType.isPresent()) {
+                                throw new IllegalArgumentException(String.format("The attribute %s in %s is map generic type is %s, but not in in proxy %s type is without generic type.",
+                                        attrName, beanInfo.getPropertyType().getName(), beanParametrizedType.get().getTypeName(), attrInfo.getPropertyType().getName()));
+                            } else if (proxyParametrizedType.isPresent() && beanParametrizedType.isPresent()) {
+                                valueToSet = toMapForBeanFromMapWithGenerics((Map) value, proxyParametrizedType.get(), beanParametrizedType.get(), params);
+                            } else if (Map.class.isAssignableFrom(beanPropertyType)) {
+                                valueToSet = (Map) value;
+                            } else {
+                                throw new IllegalArgumentException("sdsd");
+                            }
+                        }
+                    } else if (beanPropertyType.isEnum()) {
+                        valueToSet = toEnum(params, value, beanPropertyType);
+                    } else if (beanPropertyType.isAssignableFrom(value.getClass())) {
+                        valueToSet = value;
                     }
-                    //collectionBeanValue(beanInfo.)
 
-                } else {
-
+                    if (valueToSet != null) {
+                        try {
+                            beanInfo.propertyDescriptor.getWriteMethod().invoke(bean, valueToSet);
+                        } catch (IllegalAccessException | InvocationTargetException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
                 }
             }
         });
@@ -405,7 +464,7 @@ public final class MapProxy implements InvocationHandler {
         }
     }
 
-    private static Object enumProxyValue(MapProxyParams params, Object value, Class returnType) {
+    private static Object toEnum(MapProxyParams params, Object value, Class returnType) {
         Enum enumValue = null;
         if (params.getEnumMappingMethod().equals("name")) {
             enumValue = Enum.valueOf(returnType, (String) value);
@@ -428,7 +487,7 @@ public final class MapProxy implements InvocationHandler {
         return enumValue;
     }
 
-    private static Map mapProxyValue(Class clazz, Map value, Class propertyType, ParameterizedType parameterizedType, MapProxyParams params) {
+    private static Map toProxyMap(Class clazz, Map value, Class propertyType, ParameterizedType parameterizedType, MapProxyParams params) {
         Map transformedValue;
 
         if (parameterizedType != null) {
@@ -437,10 +496,10 @@ public final class MapProxy implements InvocationHandler {
             Function<Map.Entry, ?> keyMapper = mapEntryKey();
             Function<Map.Entry, ?> valueMapper = mapEntryValue();
             if (mapKeyType.isInterface()) {
-                keyMapper = keyMapper.andThen(objectToMapFunction(clazz, params).andThen(objectToMapProxyFunction(mapKeyType, params)));
+                keyMapper = keyMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapKeyType, params)));
             }
             if (mapValueType.isInterface()) {
-                valueMapper = valueMapper.andThen(objectToMapFunction(clazz, params).andThen(objectToMapProxyFunction(mapValueType, params)));
+                valueMapper = valueMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapValueType, params)));
             }
             transformedValue = (Map) value.entrySet().stream().collect(Collectors.toMap(keyMapper, valueMapper));
             if (!params.isImmutable()) {
@@ -452,15 +511,43 @@ public final class MapProxy implements InvocationHandler {
         return transformedValue;
     }
 
-    private static Collection collectionProxyValue(Class clazz, Collection value, Class propertyType, ParameterizedType parameterizedType, MapProxyParams params) {
+    private static Map toMapForBeanFromMapWithGenerics(Map value, ParameterizedType proxyParameterizedType, ParameterizedType beanParameterizedType, MapProxyParams params) {
+        Map transformedValue;
+
+        if (proxyParameterizedType != null) {
+            final Class proxyMapKeyType = getRawType(proxyParameterizedType, 0);
+            final Class proxyMapValueType = getRawType(proxyParameterizedType, 1);
+
+            final Class beanMapKeyType = getRawType(beanParameterizedType, 0);
+            final Class beanMapValueType = getRawType(beanParameterizedType, 1);
+
+            Function<Map.Entry, ?> keyMapper = mapEntryKey();
+            Function<Map.Entry, ?> valueMapper = mapEntryValue();
+            if (proxyMapKeyType.isInterface()) {
+                keyMapper = keyMapper.andThen(toBeanFunction(proxyMapKeyType, beanMapKeyType, params));
+            }
+            if (proxyMapValueType.isInterface()) {
+                valueMapper = valueMapper.andThen(toBeanFunction(proxyMapValueType, beanMapValueType, params));
+            }
+            transformedValue = (Map) value.entrySet().stream().collect(Collectors.toMap(keyMapper, valueMapper));
+            if (!params.isImmutable()) {
+                transformedValue = new HashMap<>(transformedValue);
+            }
+        } else {
+            transformedValue = value;
+        }
+        return transformedValue;
+    }
+
+    private static Collection toProxyCollection(Class clazz, Collection value, Class propertyType, ParameterizedType parameterizedType, MapProxyParams params) {
         Collection transformedValue = value;
         if (parameterizedType != null) {
             final Class collectionType = getRawType(parameterizedType, 0);
             if (collectionType.isInterface()
                     && !Map.class.isAssignableFrom(collectionType)) {
                 transformedValue =  (Collection) value.stream()
-                        .map(objectToMapFunction(clazz, params))
-                        .map(objectToMapProxyFunction(collectionType, params))
+                        .map(toValueFunction(clazz, params))
+                        .map(valueToMapProxyFunction(collectionType, params))
                         .collect(toCollectorForType(propertyType));
                 if (!params.isImmutable()) {
                     transformedValue = mutableCollection(propertyType, transformedValue);
@@ -470,51 +557,65 @@ public final class MapProxy implements InvocationHandler {
         return transformedValue;
     }
 
-    private static Collection collectionBeanValue(Class clazz, Collection value, Class propertyType, ParameterizedType parameterizedType, MapProxyParams params) {
+     private static Collection toBeanCollection(Class proxyClass, Collection value, Class proxyPropertyType, ParameterizedType proxyParameterizedType, Class beanPropertyType, ParameterizedType beanParameterizedType, MapProxyParams params) {
         Collection transformedValue = value;
-        if (parameterizedType != null) {
-            final Class collectionType = getRawType(parameterizedType, 0);
-            if (collectionType.isInterface()
-                    && !Map.class.isAssignableFrom(collectionType)) {
-                transformedValue =  (Collection) value.stream()
-                        .map(objectToMapFunction(clazz, params))
-                        .map(objectToMapProxyFunction(collectionType, params))
-                        .collect(toCollectorForType(propertyType));
-                if (!params.isImmutable()) {
-                    transformedValue = mutableCollection(propertyType, transformedValue);
-                }
+        final Class beanCollectionType = getRawType(beanParameterizedType, 0);
+        final Class proxyCollectionType = getRawType(proxyParameterizedType, 0);
+        if (beanCollectionType.isInterface() && !beanCollectionType.isAssignableFrom(proxyCollectionType)) {
+            throw new IllegalArgumentException(String.format("Could not map bean type %s to %s", proxyCollectionType.getName(), beanCollectionType.getName()));
+        } else if (beanCollectionType.isAssignableFrom(proxyCollectionType)) {
+            transformedValue = value;
+        } else {
+            transformedValue =  (Collection) value.stream()
+                    .map(v -> toBeanFromObject(v, proxyCollectionType, beanCollectionType, params))
+                    .collect(toCollectorForType(beanPropertyType));
+        }
+         if (!params.isImmutable()) {
+             transformedValue = mutableCollection(beanPropertyType, transformedValue);
+         }
+
+        /*
+        if (beanCollectionType.isInterface()
+                && !Map.class.isAssignableFrom(beanCollectionType)) {
+            transformedValue =  (Collection) value.stream()
+                    .map(objectToMapFunction(proxyClass, params))
+                    .map(objectToMapProxyFunction(beanCollectionType, params))
+                    .collect(toCollectorForType(beanPropertyType));
+            if (!params.isImmutable()) {
+                transformedValue = mutableCollection(beanPropertyType, transformedValue);
             }
         }
+
+         */
+
         return transformedValue;
     }
 
     private static Collection mutableCollection(Class returnType, Collection valueTransformed) {
+        Collection valueRet = null;
         if (valueTransformed == null) {
             return null;
         }
         try {
-            //Constructor constructor = returnType.getConstructor();
-            //valueTransformed = (Collection) constructor.newInstance();
-            //valueTransformed.addAll(valueTransformed);
-            valueTransformed = (Collection) createNewInstance(returnType);
-            valueTransformed.addAll(valueTransformed);
+            valueRet = (Collection) createNewInstance(returnType);
+            valueRet.addAll(valueTransformed);
         } catch (Exception ex) {
             if (List.class.isAssignableFrom(returnType)) {
-                valueTransformed = new ArrayList<>(valueTransformed);
+                valueRet = new ArrayList<>(valueTransformed);
             } else if (Set.class.isAssignableFrom(returnType)) {
-                valueTransformed = new HashSet<>(valueTransformed);
+                valueRet = new HashSet<>(valueTransformed);
             } else {
-                valueTransformed = new ArrayList<>(valueTransformed);
+                valueRet = new ArrayList<>(valueTransformed);
             }
         }
-        return valueTransformed;
+        return valueRet;
     }
 
-    private int proxyHashCode(Object proxy) {
+    private int invokeHashCode(Object proxy) {
         return proxy.toString().hashCode();
     }
 
-    private boolean proxyEquals(Object proxy, Object[] args) throws InvocationTargetException, IllegalAccessException {
+    private boolean invokeEquals(Object proxy, Object[] args) throws InvocationTargetException, IllegalAccessException {
         Object obj = args[0];
         if (obj == null) {
             return false;
@@ -530,7 +631,7 @@ public final class MapProxy implements InvocationHandler {
         return false;
     }
 
-    private void proxySet(Method m, Object[] args) throws ExecutionException {
+    private void invokeSet(Method m, Object[] args) throws ExecutionException {
         if (params.isImmutable()) {
             throw new IllegalStateException("Could not call set on immutable object");
         }
@@ -628,21 +729,24 @@ public final class MapProxy implements InvocationHandler {
         Map<Object, Object> map = new HashMap<>();
         for (Map.Entry entry : internal.entrySet()) {
             map.put(
-                    mapEntryKey().andThen(keyName(clazz)).andThen(objectToMapFunction(clazz, params)).apply(entry),
-                    mapEntryValue().andThen(objectToMapFunction(clazz, params)).apply(entry));
+                    mapEntryKey().andThen(keyName(clazz)).andThen(toValueFunction(clazz, params)).apply(entry),
+                    mapEntryValue().andThen(toValueFunction(clazz, params)).apply(entry));
         }
         return map;
     }
 
-    /*
-    private <T> T invokeAdapTo(Class<T> targetClazz) {
+    private <T> T invokeAdaptTo(Object proxy, Object args[]) {
+        if (args[0] == null || !(args[0] instanceof Class)) {
+            throw new IllegalArgumentException("Adapter target is mandatory and have to be a class");
+        }
+
+        Class<T> targetClazz = (Class<T>) args[0];
         if (targetClazz.equals(Map.class)) {
             return (T) invokeToMap();
         } else {
-
+            return toBeanFromObject(proxy, clazz, targetClazz, params);
         }
     }
-     */
 
     private String invokeToString() {
         Map<Object, Object> map = new LinkedHashMap<>();
@@ -653,22 +757,24 @@ public final class MapProxy implements InvocationHandler {
     }
 
     public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
-        if (HASH_CODE.equals(m.getName())) {
-            return proxyHashCode(proxy);
-        } else if (EQUALS.equals(m.getName())) {
-            return proxyEquals(proxy, args);
-        } else if (!SET.equals(m.getName()) && m.getName().startsWith(SET)) {
-            proxySet(m, args);
-        } else if (!GET.equals(m.getName()) && m.getName().startsWith(GET)) {
+        if (METHOD_HASH_CODE.equals(m.getName())) {
+            return invokeHashCode(proxy);
+        } else if (METHOD_EQUALS.equals(m.getName())) {
+            return invokeEquals(proxy, args);
+        } else if (!METHOD_SET.equals(m.getName()) && m.getName().startsWith(METHOD_SET)) {
+            invokeSet(m, args);
+        } else if (!METHOD_GET.equals(m.getName()) && m.getName().startsWith(METHOD_GET)) {
             return invokeGet(m);
-        } else if (!IS.equals(m.getName()) && m.getName().startsWith(IS)) {
+        } else if (!METHOD_IS.equals(m.getName()) && m.getName().startsWith(METHOD_IS)) {
             return invokeIs(m);
-        } else if (TO_MAP.equals(m.getName())) {
+        } else if (METHOD_TO_MAP.equals(m.getName())) {
             return invokeToMap();
-        } else if (GET_ORIGINAL_MAP.equals(m.getName())) {
+        } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
             return original;
-        } else if (TO_STRING.equals(m.getName())) {
+        } else if (METHOD_TO_STRING.equals(m.getName())) {
             return invokeToString();
+        } else if (METHOD_ADAPT_TO.equals(m.getName())) {
+            return invokeAdaptTo(proxy, args);
         }
         return null;
     }
@@ -697,13 +803,13 @@ public final class MapProxy implements InvocationHandler {
             }
         }
         try {
-            return clazz.getMethod(PARSE, valueClass).invoke(null, value);
+            return clazz.getMethod(METHOD_PARSE, valueClass).invoke(null, value);
         } catch (Exception ex) {
             log.debug("Parse method not found to convert value");
         }
         if (valuePrimitiveClass.isPresent()) {
             try {
-                return clazz.getMethod(PARSE, valuePrimitiveClass.get()).invoke(null, value);
+                return clazz.getMethod(METHOD_PARSE, valuePrimitiveClass.get()).invoke(null, value);
             } catch (Exception ex) {
                 log.debug("Parse method not found to convert primitive value");
             }
@@ -712,7 +818,7 @@ public final class MapProxy implements InvocationHandler {
         throw new IllegalStateException(MessageFormat.format(errorPattern, clazz.getName()));
     }
 
-    private static Function objectToMapProxyFunction(Class type, MapProxyParams params) {
+    private static Function valueToMapProxyFunction(Class type, MapProxyParams params) {
         return (o) -> {
             if (o instanceof Map) {
                 return MapProxy.builder(type).withParams(params).withMap((Map) o).newInstance();
@@ -750,34 +856,40 @@ public final class MapProxy implements InvocationHandler {
         };
     }
 
-    private static Function<Object, Object> objectToMapFunction(Class clazz, MapProxyParams params) {
-        return (o) -> {
-            if (o instanceof MapHolder) {
-                return ((MapHolder) o).toMap();
-            } else if (o instanceof Map) {
-                return ((Map) o).entrySet().stream().collect(
-                        Collectors.toMap(
-                                mapEntryKey().andThen(keyName(clazz)).andThen(objectToMapFunction(clazz, params)),
-                                mapEntryValue().andThen(objectToMapFunction(clazz, params))
-                        ));
-            } else if (o instanceof Collection) {
-                return ((Collection) o).stream().map(v -> {
-                    if (v instanceof MapHolder) {
-                        return ((MapHolder) v).toMap();
-                    } else {
-                        return v;
-                    }
-                }).collect(Collectors.toList());
-            } else if (o instanceof Enum) {
-                try {
-                    return ((Enum) o).getClass().getMethod(params.getEnumMappingMethod()).invoke(o);
-                } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                    throw new IllegalArgumentException(e);
+    private static Function<Object, Object> toValueFunction(Class proxyClass, MapProxyParams params) {
+        return (o) -> toValue(proxyClass, o, params);
+    }
+
+    private static Object toValue(Class proxyClass, Object value, MapProxyParams params) {
+        if (value instanceof MapHolder) {
+            return ((MapHolder) value).toMap();
+        } else if (value instanceof Map) {
+            return ((Map) value).entrySet().stream().collect(
+                    Collectors.toMap(
+                            mapEntryKey().andThen(keyName(proxyClass)).andThen(toValueFunction(proxyClass, params)),
+                            mapEntryValue().andThen(toValueFunction(proxyClass, params))
+                    ));
+        } else if (value instanceof Collection) {
+            return ((Collection) value).stream().map(v -> {
+                if (v instanceof MapHolder) {
+                    return ((MapHolder) v).toMap();
+                } else {
+                    return v;
                 }
-            } else {
-                return o;
+            }).collect(Collectors.toList());
+        } else if (value instanceof Enum) {
+            try {
+                return ((Enum) value).getClass().getMethod(params.getEnumMappingMethod()).invoke(value);
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new IllegalArgumentException(e);
             }
-        };
+        } else {
+            return value;
+        }
+    }
+
+    private static Function<Object, Object> toBeanFunction(Class proxyClazz, Class targetClazz, MapProxyParams params) {
+        return (o) -> toBeanFromObject(o, proxyClazz, targetClazz, params);
     }
 
     private static Function<Map.Entry, ?> mapEntryKey() {
@@ -791,7 +903,7 @@ public final class MapProxy implements InvocationHandler {
     private static <T> T createNewInstance(Class<T> clazz, Object...values) {
         T bean = null;
         try {
-            bean = (T) clazz.getConstructor(clazz).newInstance(values);
+            bean = (T) clazz.getConstructor().newInstance(values);
         } catch (Exception ex) {
             throw new IllegalArgumentException("Default constructor for " + clazz.getName() + " not found");
         }

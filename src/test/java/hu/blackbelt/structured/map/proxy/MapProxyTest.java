@@ -76,38 +76,38 @@ public class MapProxyTest {
 
     private void performStructuralTestCases() {
         assertEquals(Optional.of("teszt"), user.getLoginName());
-        assertEquals("teszt", getMapValue(user, "loginName", String.class));
+        assertEquals("teszt", getMapHolderValue(user, "loginName", String.class));
 
         assertEquals("1", user.getId());
-        assertEquals("1", getMapValue(user, "id", String.class));
+        assertEquals("1", getMapHolderValue(user, "id", String.class));
 
         assertEquals("Note1", user.getUserDetails().iterator().next().getNote());
-        assertEquals("Note1", ((Map<String, Object>) getMapValue(user, "userDetails", Collection.class).
+        assertEquals("Note1", ((Map<String, Object>) getMapHolderValue(user, "userDetails", Collection.class).
                 iterator().next()).get("note"));
 
         assertEquals("v1", user.getMapWithoutType().get("k1"));
-        assertEquals("v1", getMapValue(user, "mapWithoutType", Map.class).get("k1"));
+        assertEquals("v1", getMapHolderValue(user, "mapWithoutType", Map.class).get("k1"));
 
-        assertEquals("1", ((Map<String, Object>) getMapValue(user, "userDetails", Collection.class).
+        assertEquals("1", ((Map<String, Object>) getMapHolderValue(user, "userDetails", Collection.class).
                 iterator().next()).get("id"));
-        assertEquals("1", getMapValue(user.getUserDetails().iterator().next(), "id", String.class));
+        assertEquals("1", getMapHolderValue(user.getUserDetails().iterator().next(), "id", String.class));
 
         assertEquals("Test1", user.getCollectionWithoutType().iterator().next());
-        assertEquals("Test1", getMapValue(user, "collectionWithoutType", Collection.class)
+        assertEquals("Test1", getMapHolderValue(user, "collectionWithoutType", Collection.class)
                 .iterator().next());
 
         assertEquals("v1", ((Map) user.getCollectionWithMapType().iterator().next()).get("k1"));
-        assertEquals("v1", ((Map) getMapValue(user, "collectionWithMapType", Collection.class)
+        assertEquals("v1", ((Map) getMapHolderValue(user, "collectionWithMapType", Collection.class)
                 .iterator().next()).get("k1"));
 
-        assertEquals("3", getMapValue(user.getMapWithValueType()
+        assertEquals("3", getMapHolderValue(user.getMapWithValueType()
                 .get("k1"), "id", String.class));
-        assertEquals("3", ((Map) getMapValue(user, "mapWithValueType", Map.class).get("k1")).get("id"));
+        assertEquals("3", ((Map) getMapHolderValue(user, "mapWithValueType", Map.class).get("k1")).get("id"));
 
         Map<UserDetail, UserDetail> keyValue = user.getMapWithValueTypeAndKeyType();
-        assertEquals("5", getMapValue(user.getMapWithValueTypeAndKeyType()
+        assertEquals("5", getMapHolderValue(user.getMapWithValueTypeAndKeyType()
                 .get(userDetail4), "id", String.class));
-        assertEquals("5", ((Map) getMapValue(user, "mapWithValueTypeAndKeyType", Map.class)
+        assertEquals("5", ((Map) getMapHolderValue(user, "mapWithValueTypeAndKeyType", Map.class)
                 .get(((MapHolder) userDetail4).toMap())).get("id"));
 
         assertThat(user.getCountry().getName(), is("Austria"));
@@ -138,6 +138,12 @@ public class MapProxyTest {
                         hasEntry(is("note"), is("Note3"))
                 )));
 
+        assertThat((Map<?, Map<Object, Object>>) map.get("singleUserDetail"),
+                allOf(
+                        hasEntry(is("id"), is("6")),
+                        hasEntry(is("note"), is("Note6"))
+                ));
+
         assertThat(map.get("country"), is(3));
 
     }
@@ -166,7 +172,7 @@ public class MapProxyTest {
         performStructuralTestCases();
 
         assertEquals(Optional.of(Country.AT), user.getBirthCountry());
-        assertEquals(Country.AT.toString(), getMapValue(user, "birthCountry", Country.class));
+        assertEquals(Country.AT.toString(), getMapHolderValue(user, "birthCountry", Country.class));
 
     }
 
@@ -324,7 +330,7 @@ public class MapProxyTest {
         performStructuralTestCases();
 
         assertEquals(Optional.of(Country.AT), user.getBirthCountry());
-        assertEquals(3, getMapValue(user, "birthCountry", Country.class));
+        assertEquals(3, getMapHolderValue(user, "birthCountry", Country.class));
 
     }
 
@@ -348,8 +354,7 @@ public class MapProxyTest {
         assertTrue(user.getSingleUserDetail().getId().equals("1"));
     }
 
-    @Test
-    public void testToString() {
+    private Map<String, Object> getSimpleProxyMap() {
         Map<String, Object> prepared = new HashMap<>();
 
         prepared.put("active", true);
@@ -363,7 +368,7 @@ public class MapProxyTest {
         prepared.put("collectionWithMapType", ImmutableList.of(
                 ImmutableMap.of("k1", "v1"),
                 ImmutableMap.of("k2", "v2"))
-                        );
+        );
         prepared.put("mapWithoutType", ImmutableMap.of("k1", "v1"));
         prepared.put("mapWithValueType", ImmutableMap.of("k1",
                 ImmutableMap.of("id", "3", "note", "Note3")));
@@ -371,8 +376,20 @@ public class MapProxyTest {
                 ImmutableMap.of("id", "4", "note", "Note4"),
                 ImmutableMap.of("id", "5", "note", "Note5"))
         );
+
+        prepared.put("userDetails", ImmutableList.of(
+                ImmutableMap.of("id", "1", "note", "Note1"),
+                ImmutableMap.of("id", "2", "note", "Note2"))
+        );
+
         prepared.put("sms", null);
-        prepared.put("singleUserDetail", null);
+        prepared.put("singleUserDetail", ImmutableMap.of("id", "6", "note", "Note6"));
+        return prepared;
+    }
+
+    @Test
+    public void testToString() {
+        Map<String, Object> prepared = getSimpleProxyMap();
 
         user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").newInstance();
         assertEquals(
@@ -385,7 +402,7 @@ public class MapProxyTest {
                         "mapWithValueType={k1=PROXY{id=3, note=Note3}}, " +
                         "mapWithValueTypeAndKeyType={PROXY{id=4, note=Note4}=PROXY{id=5, note=Note5}}, " +
                         "mapWithoutType={k1=v1}, " +
-                        "singleUserDetail=null, " +
+                        "singleUserDetail=PROXY{id=6, note=Note6}, " +
                         "sms=null, " +
                         "userDetails=[PROXY{id=1, note=Note1}, PROXY{id=2, note=Note2}]" +
                         "}",
@@ -394,31 +411,8 @@ public class MapProxyTest {
 
     @Test
     public void testToMap() {
-        Map<String, Object> prepared =
-                ImmutableMap.<String, Object>builder()
-                        .put("active", true)
-                        .put("id", "1")
-                        .put("loginName", "teszt")
-                        .put("userDetails", ImmutableList.of(
-                                ImmutableMap.of("id", "1", "note", "Note1"),
-                                ImmutableMap.of("id", "2", "note", "Note2"))
-                        )
-                        .put("collectionWithoutType", ImmutableList.of("Test1", "Test2"))
-                        .put("collectionWithMapType", ImmutableList.of(
-                                ImmutableMap.of("k1", "v1"),
-                                ImmutableMap.of("k2", "v2"))
-                        )
-                        .put("mapWithoutType", ImmutableMap.of("k1", "v1"))
-                        .put("mapWithValueType", ImmutableMap.of("k1",
-                                ImmutableMap.of("id", "3", "note", "Note3")))
-                        .put("mapWithValueTypeAndKeyType",
-                                ImmutableMap.of(
-                                        ImmutableMap.of("id", "4", "note", "Note4"),
-                                        ImmutableMap.of("id", "5", "note", "Note5")
-                                )
-                        )
-                        .put("country", 3)
-                        .build();
+        Map<String, Object> prepared =getSimpleProxyMap();
+        prepared.put("country", 3);
 
         user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").withEnumMappingMethod("getOrdinal").newInstance();
 
@@ -515,7 +509,52 @@ public class MapProxyTest {
 
 
     @Test
+    public void testBuildToBean() {
+        Map<String, Object> prepared =getSimpleProxyMap();
+        prepared.put("country", 3);
+
+        user = MapProxy.builder(User.class).
+                withMap(prepared)
+                .withImmutable(true)
+                .withIdentifierField("id")
+                .withEnumMappingMethod("getOrdinal").newInstance();
+
+        UserDetailBean userDetailBean4 = UserDetailBean.builder()
+                .id("4")
+                .note("Note4")
+                .build();
+
+        UserBean bean = user.adaptTo(UserBean.class);
+
+        assertEquals("teszt", bean.getLoginName());
+
+        assertEquals("1", bean.getId());
+
+        assertEquals("6", bean.getSingleUserDetail().getId());
+        assertEquals("Note6", bean.getSingleUserDetail().getNote());
+
+        assertEquals("Note1", bean.getUserDetails().iterator().next().getNote());
+        assertEquals("1", bean.getUserDetails().iterator().next().getId());
+
+        assertEquals("v1", bean.getMapWithoutType().get("k1"));
+
+        assertEquals("Test1", bean.getCollectionWithoutType().iterator().next());
+
+        assertEquals("v1", ((Map) bean.getCollectionWithMapType().iterator().next()).get("k1"));
+
+        assertEquals("3", bean.getMapWithValueType().get("k1").getId());
+
+        assertEquals("5", bean.getMapWithValueTypeAndKeyType()
+                .get(userDetailBean4).getId());
+
+        assertThat(bean.getCountry(), is(Country.AT));
+
+    }
+
+    @Test
     public void testBuildFromBean() {
+
+
         UserBean userBean = UserBean.userBeanBuilder()
                 .active(true)
                 .id("1")
@@ -524,7 +563,7 @@ public class MapProxyTest {
                                 .id("1")
                                 .note("Note1")
                                 .build(),
-                             UserDetailBean.builder()
+                        UserDetailBean.builder()
                                 .id("2")
                                 .note("Note2")
                                 .build()))
@@ -534,10 +573,10 @@ public class MapProxyTest {
                         ImmutableMap.of("k2", "v2")))
                 .mapWithoutType(ImmutableMap.of("k1", "v1"))
                 .mapWithValueType(ImmutableMap.of("k1",
-                                UserDetailBean.builder()
-                                        .id("3")
-                                        .note("Note3")
-                                        .build()))
+                        UserDetailBean.builder()
+                                .id("3")
+                                .note("Note3")
+                                .build()))
                 .mapWithValueTypeAndKeyType(
                         ImmutableMap.of(
                                 UserDetailBean.builder()
@@ -548,8 +587,11 @@ public class MapProxyTest {
                                         .id("5")
                                         .note("Note5")
                                         .build())
-                        )
-                .singleUserDetail(null)
+                )
+                .singleUserDetail(UserDetailBean.builder()
+                        .id("6")
+                        .note("Note6")
+                        .build())
                 .sms(null)
                 .country(Country.AT)
                 .birthCountry(Country.AT)
@@ -564,13 +606,13 @@ public class MapProxyTest {
         performStructuralTestCases();
 
         assertEquals(Optional.of(Country.AT), user.getBirthCountry());
-        assertEquals(3, getMapValue(user, "birthCountry", Country.class));
+        assertEquals(3, getMapHolderValue(user, "birthCountry", Country.class));
 
         Map map = ((MapHolder) user).toMap();
         assertMapStructure(map);
     }
 
-    <T> T getMapValue(Object input, Object key, Class<T> target) {
+    <T> T getMapHolderValue(Object input, Object key, Class<T> target) {
         return (T) ((MapHolder) input).toMap().get(key);
     }
 }

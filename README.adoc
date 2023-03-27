@@ -5,12 +5,27 @@ image::https://github.com/BlackBeltTechnology/structured-map-proxy/actions/workf
 == What is this library about?
 
 It combines interface based proxies with java.util.Map backends. This means that you can define typesafe handlers to
-dynamic structures as Map and Collection of maps over the Map and Collection defined generics.
+dynamic structures as Map and Collection of maps over the Map and Collection defined generics. It implements `MapHolder` interface
+also.
+
+[source,java]
+----
+public interface MapHolder {
+    Map<String, Object> toMap();
+    Map<String, Object> getOriginalMap();
+    <T> T adaptTo(Class<T> clazz);
+}
+----
 
 It can handle nested interfaces too, so all types of structures can be defined with a structure of interfaces.
 
 The map entries and interface methods are mapped as per the JavaBean standard specification. This results in for example:
 a String named as `stringValue` in a Map to have a corresponding interface containing `getStringValue` and `setStringValue`.
+
+It also can be used to transform values from/to java beans. The `MapHolder` contains methods which
+can convert to map or adatpt to beans. When the interface contains the given mehod the casting to the `MapHolder`
+not needed, the method can be called on the given interface directly.
+
 
 == Usage
 
@@ -168,6 +183,78 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
      .active(true)
      .loginName("teszt")
      .build();
+----
+
+=== Create a bean from MapProxy
+
+Define standard java beans with setters and getters.
+
+[source,java]
+----
+@Builder
+@Getter
+@Setter
+public class IdentifierBean {
+    Serializable id;
+    String type;
+}
+
+@Builder(builderMethodName = "entityBeanBuilder")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class EntityBean {
+    IdentifierBean compositeIdentifier;
+    Serializable id;
+}
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserBean extends EntityBean {
+
+    String email;
+    UserDetailBean singleUserDetail;
+    Collection<UserDetailBean> userDetails;
+
+    @Builder(builderMethodName = "userBeanBuilder")
+    public UserBean(IdentifierBean compositeIdentifier,
+                    Serializable id,
+                    String email,
+                    UserDetailBean singleUserDetail,
+                    Collection<UserDetailBean> userDetails
+                    ) {
+        super(compositeIdentifier);
+        this.email = email;
+        this.singleUserDetail = singleUserDetail;
+        this.userDetails = userDetails;
+    }
+}
+
+@Builder
+@Getter
+@Setter
+@EqualsAndHashCode
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserDetailBean {
+    String id;
+    String note;
+}
+
+----
+
+[source,java]
+----
+User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+     .id(MapProxy.builder(Identifier.class).id("1").type("User").newInstance())
+     .active(true)
+     .email("teszt")
+     .build();
+
+UserBean bean = user.adaptTo(UserBean.class);
 ----
 
 == Supported options in MapProxy
