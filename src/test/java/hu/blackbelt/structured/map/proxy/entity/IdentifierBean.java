@@ -31,7 +31,6 @@ import java.io.Serializable;
 @Getter
 @Setter
 public class IdentifierBean {
-
     Serializable id;
     String type;
 }

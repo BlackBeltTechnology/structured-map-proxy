@@ -23,7 +23,7 @@ The map entries and interface methods are mapped as per the JavaBean standard sp
 a String named as `stringValue` in a Map to have a corresponding interface containing `getStringValue` and `setStringValue`.
 
 It also can be used to transform values from/to java beans. The `MapHolder` contains methods which
-can convert to map or adatpt to beans. When the interface contains the given mehod the casting to the `MapHolder`
+can convert to map or adapt to beans. When the interface contains the given method the casting to the `MapHolder`
 not needed, the method can be called on the given interface directly.
 
 
@@ -277,11 +277,12 @@ Special field which can be used to determinate equality of 2 instances. When it 
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
 - mapNullToOptionalAbsent (default `false`)
-When it is true, when the value not set or absent in the given map it will return Optional.isPresent() false.
+When set to true and a value is not present, the proxy will return with an `Optional` value where the `.isPresent()` check will result in false.
 
 == Supported options in MapBuilderProxy
 
-The MapBuilderProxy's builder supports all options from MapProxy and additional options. For example:
+The MapBuilderProxy's builder supports all of the options of MapProxy with a couple of addition.
+For example:
 
 === Adding a Builder method prefix
 
@@ -310,9 +311,8 @@ This annotation is used to define the key name in map for the related field.
 
 === @Embedded
 
-Sometimes in the Map storing flat information which is better to shown as an separated
-Object in the bean. For example there is some fields which are related and wanto separate
-as different interface.
+Sometimes we need to store information in a hierarchical structure with or without
+dedicated interfaces. For such cases we can use the `@Embedded` annotation.
 
 === Annotation examples
 
