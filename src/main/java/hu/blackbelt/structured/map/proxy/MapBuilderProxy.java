@@ -26,11 +26,14 @@ import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.Map;
 
 public final class MapBuilderProxy implements InvocationHandler {
 
     Object internal;
     String prefix;
+
+    MapProxyParams params;
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, Class<T> targetClass) {
         return new MapBuilderProxy.Builder<>(builderClass, targetClass);
@@ -46,7 +49,7 @@ public final class MapBuilderProxy implements InvocationHandler {
         private final Class<T> targetClass;
         private T targetInstance;
         private String builderMethodPrefix;
-        private String enumMappingMethod;
+        private MapProxyParams params = new MapProxyParams();
 
         private Builder(Class<B> builderClass, Class<T> targetClass) {
             this.builderClass = builderClass;
@@ -63,14 +66,45 @@ public final class MapBuilderProxy implements InvocationHandler {
             return this;
         }
 
+        private Builder<B, T> withParams(MapProxyParams params) {
+            this.params.setImmutable(params.isImmutable());
+            this.params.setNullSafeCollection(params.isNullSafeCollection());
+            this.params.setIdentifierField(params.getIdentifierField());
+            this.params.setEnumMappingMethod(params.getEnumMappingMethod());
+            this.params.setMapNullToOptionalAbsent(params.isMapNullToOptionalAbsent());
+            return this;
+        }
+
+        public Builder<B, T> withImmutable(boolean immutable) {
+            this.params.setImmutable(immutable);
+            return this;
+        }
+
+        public Builder<B, T> withNullSafeCollection(boolean nullSafeCollection) {
+            this.params.setNullSafeCollection(nullSafeCollection);
+            return this;
+        }
+
+        public Builder<B, T> withIdentifierField(String identifierField) {
+            this.params.setIdentifierField(identifierField);
+            return this;
+        }
+
         public Builder<B, T> withEnumMappingMethod(String enumMappingMethod) {
-            this.enumMappingMethod = enumMappingMethod;
+            this.params.setEnumMappingMethod(enumMappingMethod);
+            return this;
+        }
+
+        public Builder<B, T> withMapNullToOptionalAbsent(boolean mapNullToOptionalAbsent) {
+            this.params.setMapNullToOptionalAbsent(mapNullToOptionalAbsent);
             return this;
         }
 
         public B newInstance() {
             if (targetInstance == null) {
-                targetInstance = MapProxy.builder(targetClass).withEnumMappingMethod(enumMappingMethod).newInstance();
+                targetInstance = MapProxy.builder(targetClass)
+                        .withParams(params)
+                        .newInstance();
             }
             return (B) java.lang.reflect.Proxy.newProxyInstance(
                     builderClass.getClassLoader(),

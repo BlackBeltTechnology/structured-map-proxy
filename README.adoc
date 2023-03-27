@@ -5,12 +5,27 @@ image::https://github.com/BlackBeltTechnology/structured-map-proxy/actions/workf
 == What is this library about?
 
 It combines interface based proxies with java.util.Map backends. This means that you can define typesafe handlers to
-dynamic structures as Map and Collection of maps over the Map and Collection defined generics.
+dynamic structures as Map and Collection of maps over the Map and Collection defined generics. It implements `MapHolder` interface
+also.
+
+[source,java]
+----
+public interface MapHolder {
+    Map<String, Object> toMap();
+    Map<String, Object> getOriginalMap();
+    <T> T adaptTo(Class<T> clazz);
+}
+----
 
 It can handle nested interfaces too, so all types of structures can be defined with a structure of interfaces.
 
 The map entries and interface methods are mapped as per the JavaBean standard specification. This results in for example:
 a String named as `stringValue` in a Map to have a corresponding interface containing `getStringValue` and `setStringValue`.
+
+It also can be used to transform values from/to java beans. The `MapHolder` contains methods which
+can convert to map or adatpt to beans. When the interface contains the given mehod the casting to the `MapHolder`
+not needed, the method can be called on the given interface directly.
+
 
 == Usage
 
@@ -34,9 +49,22 @@ In this example we have a `User` which can have a `UserDetail` as a single and c
 
 [source,java]
 ----
-public interface Entity extends Serializable {
+
+public interface Identifier extends Serializable {
+    @Key(name = "__id")
     Serializable getId();
     void setId(Serializable id);
+
+    @Key(name = "__type")
+    String getType();
+    void setType(String id);
+}
+
+
+public interface Entity extends Serializable {
+    @Embedded
+    Identifier getId();
+    void setId(Identifier id);
 }
 
 public interface User extends Entity {
@@ -52,6 +80,7 @@ public interface User extends Entity {
     Optional<String> getFirstName();
     void setFirstName(String firstName);
 
+    @Key(name = "last_name")
     Optional<String> getLastName();
     void setLastName(String lastName);
 
@@ -69,8 +98,9 @@ public interface User extends Entity {
 }
 
 public interface UserDetail {
-    String getId();
-    void setId(String id);
+    @Embedded
+    Identifier getId();
+    void setId(Identifier id);
 
     String getNote();
     void setNote(String note);
@@ -84,11 +114,13 @@ public interface UserDetail {
 // Create map represents fields.
 Map<String, Object> prepared = new HashMap<>();
 prepared.put("active", true);
-prepared.put("id", "1");
+prepared.put("__id", "1");
+prepared.put("__type", "user");
 prepared.put("email", Optional.of("test@test.com"));
 prepared.put("loginName", Optional.of("teszt"));
 prepared.put("lastLoginTime", Optional.of(time));
-prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("id", "1", "note", "Note1")));
+prepared.put("last_name", Optional.of("teszt"));
+prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("__id", "1", "__type", "UserDetail", "note", "Note1")));
 
 User user = MapProxy.builder(User.class)
         .withMap(prepared)
@@ -105,14 +137,14 @@ user.setEmail("another@example.com");
 User user = MapProxy.builder(User.class).newInstance();
 user.setActive(true);
 user.setLoginName("teszt");
-user.setId("1");
+user.setId(MapProxy.builder(Identifier.class).id("1").type("User").newInstance());
 
 UserDetail userDetail1 = MapProxy.builder(UserDetail.class).newInstance();
-userDetail1.setId("1");
+userDetail1.setId(MapProxy.builder(Identifier.class).id("1").type("UserDetail").newInstance());
 userDetail1.setNote("Note1");
 
 UserDetail userDetail2 = MapProxy.builder(UserDetail.class).newInstance();
-userDetail2.setId("2");
+userDetail2.setId(MapProxy.builder(Identifier.class).id("2").type("UserDetail").newInstance());
 userDetail2.setNote("Note2");
 
 user.setUserDetails(ImmutableList.of(userDetail1, userDetail2));
@@ -147,10 +179,82 @@ public interface UserBuilder {
 [source,java]
 ----
 User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
-     .id("1")
+     .id(MapProxy.builder(Identifier.class).id("1").type("User").newInstance())
      .active(true)
      .loginName("teszt")
      .build();
+----
+
+=== Create a bean from MapProxy
+
+Define standard java beans with setters and getters.
+
+[source,java]
+----
+@Builder
+@Getter
+@Setter
+public class IdentifierBean {
+    Serializable id;
+    String type;
+}
+
+@Builder(builderMethodName = "entityBeanBuilder")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class EntityBean {
+    IdentifierBean compositeIdentifier;
+    Serializable id;
+}
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserBean extends EntityBean {
+
+    String email;
+    UserDetailBean singleUserDetail;
+    Collection<UserDetailBean> userDetails;
+
+    @Builder(builderMethodName = "userBeanBuilder")
+    public UserBean(IdentifierBean compositeIdentifier,
+                    Serializable id,
+                    String email,
+                    UserDetailBean singleUserDetail,
+                    Collection<UserDetailBean> userDetails
+                    ) {
+        super(compositeIdentifier);
+        this.email = email;
+        this.singleUserDetail = singleUserDetail;
+        this.userDetails = userDetails;
+    }
+}
+
+@Builder
+@Getter
+@Setter
+@EqualsAndHashCode
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserDetailBean {
+    String id;
+    String note;
+}
+
+----
+
+[source,java]
+----
+User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+     .id(MapProxy.builder(Identifier.class).id("1").type("User").newInstance())
+     .active(true)
+     .email("teszt")
+     .build();
+
+UserBean bean = user.adaptTo(UserBean.class);
 ----
 
 == Supported options in MapProxy
@@ -172,10 +276,12 @@ If set to `true` and given a collection is not set in the map, an empty collecti
 Special field which can be used to determinate equality of 2 instances. When it is not defined the String representation of the 2 objects is used for `equals`
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
+- mapNullToOptionalAbsent (default `false`)
+When it is true, when the value not set or absent in the given map it will return Optional.isPresent() false.
 
 == Supported options in MapBuilderProxy
 
-The MapBuilderProxy's builder supports additional options. For example:
+The MapBuilderProxy's builder supports all options from MapProxy and additional options. For example:
 
 === Adding a Builder method prefix
 
@@ -193,6 +299,50 @@ It defines whether the buidler method can have a prefix or not. By default the b
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
 
+== Annotations
+
+There are annotations which helps to configure the mapping between Map and the interface.
+The annotations have to be defined in the getter method.
+
+=== @Key
+
+This annotation is used to define the key name in map for the related field.
+
+=== @Embedded
+
+Sometimes in the Map storing flat information which is better to shown as an separated
+Object in the bean. For example there is some fields which are related and wanto separate
+as different interface.
+
+=== Annotation examples
+
+[source, java]
+----
+public interface Identifier extends Serializable {
+    @Key(name = "__id")
+    Serializable getId();
+    void setId(Serializable id);
+
+    @Key(name = "__type")
+    String getType();
+    void setType(String id);
+}
+
+
+public interface Entity extends Serializable {
+    @Embedded
+    Identifier getId();
+    void setId(Identifier id);
+
+    String getName();
+    void setName(String name);
+
+}
+----
+
+In this example the Entity's map will contain `__type` and `__id` fields with `name`.
+So in the Map it is flattened, bu8t from MapProxy it can be accessed as an embedded
+MapProxy.
 
 == Contributing to the project
 

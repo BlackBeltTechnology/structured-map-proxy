@@ -20,6 +20,8 @@ package hu.blackbelt.structured.map.proxy.entity;
  * #L%
  */
 
+import hu.blackbelt.structured.map.proxy.annotation.Key;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
@@ -28,22 +30,12 @@ import java.util.Optional;
 public interface User extends Entity {
     Boolean getActive();
     void setActive(Boolean active);
-    LocalDateTime getAuditCreateTime();
-    void setAuditCreateTime(LocalDateTime auditCreateTime);
-    String getAuditCreateUser();
-    void setAuditCreateUser(String auditCreateUser);
-    LocalDateTime getAuditUpdateTime();
-    void setAuditUpdateTime(LocalDateTime auditUpdateTime);
-    String getAuditUpdateUser();
-    void setAuditUpdateUser(String auditUpdateUser);
     String getCredential();
     void setCredential(String credential);
     String getEmail();
     void setEmail(String email);
     Optional<String> getFirstName();
     void setFirstName(String firstName);
-    String getGuid();
-    void setGuid(String guid);
     LocalDateTime getLastLoginTime();
     void setLastLoginTime(LocalDateTime lastLoginTime);
     Optional<String> getLastName();
@@ -56,8 +48,6 @@ public interface User extends Entity {
     void setNotificationSms(Boolean notificationSms);
     String getSms();
     void setSms(String sms);
-    String getXmiid();
-    void setXmiid(String xmiid);
 
     UserDetail getSingleUserDetail();
     void setSingleUserDetail(UserDetail userDetail);
@@ -88,5 +78,6 @@ public interface User extends Entity {
 
     void setBirthCountry(Country country);
 
+    <T> T adaptTo(Class<T> clazz);
 
 }

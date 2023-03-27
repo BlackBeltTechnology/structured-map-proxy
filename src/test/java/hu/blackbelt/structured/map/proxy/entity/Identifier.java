@@ -1,4 +1,4 @@
-package hu.blackbelt.structured.map.proxy;
+package hu.blackbelt.structured.map.proxy.entity;
 
 /*-
  * #%L
@@ -9,9 +9,9 @@ package hu.blackbelt.structured.map.proxy;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,13 +20,18 @@ package hu.blackbelt.structured.map.proxy;
  * #L%
  */
 
-import java.util.Map;
+import hu.blackbelt.structured.map.proxy.annotation.Key;
 
-public interface MapHolder {
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
-    Map<String, Object> toMap();
+public interface Identifier extends Serializable {
+    @Key(name = "__id")
+    Serializable getId();
+    void setId(Serializable id);
 
-    Map<String, Object> getOriginalMap();
+    @Key(name = "__type")
+    String getType();
+    void setType(String type);
 
-    <T> T adaptTo(Class<T> clazz);
 }
