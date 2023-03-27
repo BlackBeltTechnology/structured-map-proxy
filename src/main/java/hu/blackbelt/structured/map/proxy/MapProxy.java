@@ -573,22 +573,7 @@ public final class MapProxy implements InvocationHandler {
          if (!params.isImmutable()) {
              transformedValue = mutableCollection(beanPropertyType, transformedValue);
          }
-
-        /*
-        if (beanCollectionType.isInterface()
-                && !Map.class.isAssignableFrom(beanCollectionType)) {
-            transformedValue =  (Collection) value.stream()
-                    .map(objectToMapFunction(proxyClass, params))
-                    .map(objectToMapProxyFunction(beanCollectionType, params))
-                    .collect(toCollectorForType(beanPropertyType));
-            if (!params.isImmutable()) {
-                transformedValue = mutableCollection(beanPropertyType, transformedValue);
-            }
-        }
-
-         */
-
-        return transformedValue;
+         return transformedValue;
     }
 
     private static Collection mutableCollection(Class returnType, Collection valueTransformed) {
