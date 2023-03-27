@@ -20,15 +20,14 @@ package hu.blackbelt.structured.map.proxy.entity;
  * #L%
  */
 
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Builder
 @Getter
 @Setter
 @EqualsAndHashCode
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserDetailBean {
     String id;
     String note;

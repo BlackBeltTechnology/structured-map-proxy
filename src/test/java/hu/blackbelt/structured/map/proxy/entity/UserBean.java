@@ -43,7 +43,7 @@ public class UserBean extends EntityBean {
     Boolean notificationEmail;
     Boolean notificationSms;
     String sms;
-    UserDetail singleUserDetail;
+    UserDetailBean singleUserDetail;
     Collection<UserDetailBean> userDetails;
     Collection collectionWithoutType;
     Collection<Map<String, Object>> collectionWithMapType;
@@ -73,7 +73,7 @@ public class UserBean extends EntityBean {
                     Boolean notificationEmail,
                     Boolean notificationSms,
                     String sms,
-                    UserDetail singleUserDetail,
+                    UserDetailBean singleUserDetail,
                     Collection<UserDetailBean> userDetails,
                     Collection collectionWithoutType,
                     Collection<Map<String, Object>> collectionWithMapType,
