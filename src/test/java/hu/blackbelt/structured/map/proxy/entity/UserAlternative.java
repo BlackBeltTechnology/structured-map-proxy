@@ -20,14 +20,12 @@ package hu.blackbelt.structured.map.proxy.entity;
  * #L%
  */
 
-import hu.blackbelt.structured.map.proxy.annotation.Key;
-
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
-public interface User extends Entity {
+public interface UserAlternative extends Entity {
     Boolean getActive();
     void setActive(Boolean active);
     String getCredential();
