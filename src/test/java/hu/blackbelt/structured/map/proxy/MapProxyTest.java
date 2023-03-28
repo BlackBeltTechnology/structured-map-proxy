@@ -418,6 +418,31 @@ public class MapProxyTest {
 
         Map map = ((MapHolder) user).toMap();
         assertMapStructure(map);
+
+        map = user.adaptTo(Map.class);
+        assertMapStructure(map);
+    }
+
+    @Test
+    public void testAdaptToAnotherInterface() {
+        Map<String, Object> prepared =getSimpleProxyMap();
+        prepared.put("country", 3);
+
+        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").withEnumMappingMethod("getOrdinal").newInstance();
+
+        Map map = ((MapHolder) user).toMap();
+        assertMapStructure(map);
+
+        UserAlternative userAlternative = user.adaptTo(UserAlternative.class);
+        assertMapStructure(userAlternative.adaptTo(Map.class));
+
+        assertEquals(Optional.of("teszt"), userAlternative.getLoginName());
+        assertEquals("1", userAlternative.getId());
+        assertEquals("Note1", userAlternative.getUserDetails().iterator().next().getNote());
+        assertEquals("v1", userAlternative.getMapWithoutType().get("k1"));
+        assertEquals("Test1", userAlternative.getCollectionWithoutType().iterator().next());
+        assertThat(userAlternative.getCountry(), is(Country.AT));
+
     }
 
     @Test
@@ -553,8 +578,6 @@ public class MapProxyTest {
 
     @Test
     public void testBuildFromBean() {
-
-
         UserBean userBean = UserBean.userBeanBuilder()
                 .active(true)
                 .id("1")
@@ -609,6 +632,9 @@ public class MapProxyTest {
         assertEquals(3, getMapHolderValue(user, "birthCountry", Country.class));
 
         Map map = ((MapHolder) user).toMap();
+        assertMapStructure(map);
+
+        map = user.adaptTo(Map.class);
         assertMapStructure(map);
     }
 

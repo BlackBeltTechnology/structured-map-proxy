@@ -89,7 +89,7 @@ public final class MapProxy implements InvocationHandler {
     public static <T> Builder<T> builder(MapProxy proxy) {
         return new Builder(proxy.clazz)
                 .withParams(proxy.params)
-                .withMap(proxy.original);
+                .withMap((Map<String, ?>) proxy.invokeToMap());
     }
 
     public static class Builder<T> {
@@ -728,6 +728,11 @@ public final class MapProxy implements InvocationHandler {
         Class<T> targetClazz = (Class<T>) args[0];
         if (targetClazz.equals(Map.class)) {
             return (T) invokeToMap();
+        } else if (targetClazz.isInterface()) {
+            return MapProxy.builder(targetClazz)
+                    .withMap((Map<String, ?>) invokeToMap())
+                    .withParams(params)
+                    .newInstance();
         } else {
             return toBeanFromObject(proxy, clazz, targetClazz, params);
         }
