@@ -65,6 +65,9 @@ public interface Entity extends Serializable {
     @Embedded
     Identifier getId();
     void setId(Identifier id);
+
+    @Embedded
+    Identifier identifier();
 }
 
 public interface User extends Entity {
@@ -313,6 +316,8 @@ This annotation is used to define the key name in map for the related field.
 
 Sometimes we need to store information in a hierarchical structure with or without
 dedicated interfaces. For such cases we can use the `@Embedded` annotation.
+The `@Embedded` annotation can be used on methods which are not getters for
+factory like functions.
 
 === Annotation examples
 

@@ -27,6 +27,10 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 public interface Entity extends Serializable {
+
+    @Embedded
+    Identifier identifier();
+
     @Embedded
     Identifier getCompositeIdentifier();
     void setCompositeIdentifier(Identifier identifier);
