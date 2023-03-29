@@ -205,7 +205,7 @@ public class MapProxyTest {
         assertThat(map.get("firstName"), is(nullValue()));
         assertThat(user.getFirstName(), is(nullValue()));
 
-        assertThat(map.get("lastName"), is(nullValue()));
+        assertThat(map.get("lastName"), is(Optional.empty()));
         assertThat(user.getLastName(), is(Optional.empty()));
 
         assertThat(map.get("birthCountry"), is(Country.AT.getOrdinal()));
@@ -221,7 +221,7 @@ public class MapProxyTest {
         assertThat(map.get("firstName"), is(nullValue()));
         assertThat(user.getFirstName(), is(Optional.empty()));
 
-        assertThat(map.get("lastName"), is(nullValue()));
+        assertThat(map.get("lastName"), is(Optional.empty()));
         assertThat(user.getLastName(), is(Optional.empty()));
     }
 

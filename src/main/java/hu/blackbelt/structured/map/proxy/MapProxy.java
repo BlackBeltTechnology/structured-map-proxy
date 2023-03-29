@@ -23,7 +23,9 @@ package hu.blackbelt.structured.map.proxy;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import hu.blackbelt.structured.map.proxy.annotation.Embedded;
 import hu.blackbelt.structured.map.proxy.annotation.Key;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
@@ -246,7 +248,7 @@ public final class MapProxy implements InvocationHandler {
             throw new RuntimeException(e);
         }
 
-        Map<String, Object> proxyMap = new HashMap<>();
+        Map<String, Object> proxyMap = new LinkedHashMap<>();
 
         typeInfo.forEach((attrName, attrInfo) -> {
             final String mapKey = attrInfo.mapKey;
@@ -333,7 +335,7 @@ public final class MapProxy implements InvocationHandler {
             throw new RuntimeException(e);
         }
 
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new LinkedHashMap<>();
         Map<String, AttributeInfo> finalBeanInfos = beanInfos;
 
         targetInfos.forEach((attrName, attrInfo) -> {
@@ -510,11 +512,13 @@ public final class MapProxy implements InvocationHandler {
                 keyMapper = keyMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapKeyType, params)));
             }
             if (mapValueType.isInterface()) {
-                valueMapper = valueMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapValueType, params)));
+                valueMapper = valueMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapValueType, params).andThen(v -> v == null ? Optional.empty() : v)));
             }
             transformedValue = (Map) value.entrySet().stream().collect(Collectors.toMap(keyMapper, valueMapper));
             if (!params.isImmutable()) {
-                transformedValue = new HashMap<>(transformedValue);
+                transformedValue = new LinkedHashMap<>(transformedValue);
+            } else {
+                transformedValue = ImmutableMap.copyOf(transformedValue);
             }
         } else {
             transformedValue = value;
@@ -542,7 +546,9 @@ public final class MapProxy implements InvocationHandler {
             }
             transformedValue = (Map) value.entrySet().stream().collect(Collectors.toMap(keyMapper, valueMapper));
             if (!params.isImmutable()) {
-                transformedValue = new HashMap<>(transformedValue);
+                transformedValue = new LinkedHashMap<>(transformedValue);
+            } else {
+                transformedValue = ImmutableMap.copyOf(transformedValue);
             }
         } else {
             transformedValue = value;
@@ -562,6 +568,8 @@ public final class MapProxy implements InvocationHandler {
                         .collect(toCollectorForType(propertyType));
                 if (!params.isImmutable()) {
                     transformedValue = mutableCollection(propertyType, transformedValue);
+                } else {
+                    transformedValue = immutableCollection(propertyType, transformedValue);
                 }
             }
         }
@@ -583,6 +591,8 @@ public final class MapProxy implements InvocationHandler {
         }
          if (!params.isImmutable()) {
              transformedValue = mutableCollection(beanPropertyType, transformedValue);
+         } else {
+             transformedValue = immutableCollection(beanCollectionType, transformedValue);
          }
          return transformedValue;
     }
@@ -592,10 +602,14 @@ public final class MapProxy implements InvocationHandler {
         if (valueTransformed == null) {
             return null;
         }
-        try {
-            valueRet = (Collection) createNewInstance(returnType);
-            valueRet.addAll(valueTransformed);
-        } catch (Exception ex) {
+        if (!returnType.isInterface()) {
+            try {
+                valueRet = (Collection) createNewInstance(returnType);
+                valueRet.addAll(valueTransformed);
+            } catch (Exception ex) {
+            }
+        }
+        if (valueRet == null) {
             if (List.class.isAssignableFrom(returnType)) {
                 valueRet = new ArrayList<>(valueTransformed);
             } else if (Set.class.isAssignableFrom(returnType)) {
@@ -603,6 +617,22 @@ public final class MapProxy implements InvocationHandler {
             } else {
                 valueRet = new ArrayList<>(valueTransformed);
             }
+        }
+
+        return valueRet;
+    }
+
+    private static Collection immutableCollection(Class returnType, Collection valueTransformed) {
+        Collection valueRet = null;
+        if (valueTransformed == null) {
+            return null;
+        }
+        if (List.class.isAssignableFrom(returnType)) {
+            valueRet = ImmutableList.copyOf(valueTransformed);
+        } else if (Set.class.isAssignableFrom(returnType)) {
+            valueRet = ImmutableSet.copyOf(valueTransformed);
+        } else {
+            valueRet = ImmutableList.copyOf(valueTransformed);
         }
         return valueRet;
     }
@@ -734,13 +764,17 @@ public final class MapProxy implements InvocationHandler {
     }
 
     private Object invokeToMap() {
-        Map<Object, Object> map = new HashMap<>();
-        for (Map.Entry entry : internal.entrySet()) {
+        final Map<Object, Object> map = new LinkedHashMap<>();
+        internal.forEach((k, v) ->
             map.put(
-                    mapEntryKey().andThen(keyName(clazz)).andThen(toValueFunction(clazz, params)).apply(entry),
-                    mapEntryValue().andThen(toValueFunction(clazz, params)).apply(entry));
+                keyName(clazz).andThen(toValueFunction(clazz, params)).apply(k),
+                toValueFunction(clazz, params).andThen(v1 -> (v1 == null && params.isImmutable()) ? Optional.empty() : v1).apply(v)
+            ));
+        if (params.isImmutable()) {
+            return ImmutableMap.copyOf(map);
+        } else {
+            return new LinkedHashMap<>(map);
         }
-        return map;
     }
 
     private <T> T invokeAdaptTo(Object proxy, Object args[]) {
@@ -881,11 +915,13 @@ public final class MapProxy implements InvocationHandler {
         if (value instanceof MapHolder) {
             return ((MapHolder) value).toMap();
         } else if (value instanceof Map) {
-            return ((Map) value).entrySet().stream().collect(
-                    Collectors.toMap(
-                            mapEntryKey().andThen(keyName(proxyClass)).andThen(toValueFunction(proxyClass, params)),
-                            mapEntryValue().andThen(toValueFunction(proxyClass, params))
-                    ));
+            final Map<Object, Object> map = new LinkedHashMap<>();
+            ((Map<Object, Object>) value).forEach((k,v) ->
+                map.put(
+                        keyName(proxyClass).andThen(toValueFunction(proxyClass, params)).apply(k),
+                        toValueFunction(proxyClass, params).apply(v)
+                ));
+            return map;
         } else if (value instanceof Collection) {
             return ((Collection) value).stream().map(v -> {
                 if (v instanceof MapHolder) {
