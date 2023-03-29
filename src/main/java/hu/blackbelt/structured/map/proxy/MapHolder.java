@@ -28,5 +28,7 @@ public interface MapHolder {
 
     Map<String, Object> getOriginalMap();
 
+    Map<String, Object> getInternalMap();
+
     <T> T adaptTo(Class<T> clazz);
 }
