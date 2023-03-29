@@ -244,6 +244,9 @@ public class MapProxyTest {
         assertThat(user.getCompositeIdentifier().getId(), is("ID"));
         assertThat(user.getCompositeIdentifier().getType(), is("USER"));
 
+        assertThat(user.identifier().getId(), is("ID"));
+        assertThat(user.identifier().getType(), is("USER"));
+
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(false)
@@ -260,6 +263,9 @@ public class MapProxyTest {
 
         assertThat(user.getCompositeIdentifier().getId(), is("ID2"));
         assertThat(user.getCompositeIdentifier().getType(), is("USER"));
+
+        assertThat(user.identifier().getId(), is("ID2"));
+        assertThat(user.identifier().getType(), is("USER"));
 
     }
 
