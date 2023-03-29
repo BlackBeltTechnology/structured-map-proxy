@@ -459,7 +459,7 @@ public class MapProxyTest {
                         .put("userDetails", ImmutableList.of(
                                 ImmutableMap.of("id", "1", "note", "Note1"))
                         )
-                        .put("id", "1")
+                        .put("__id", "1")
                         .build();
 
         Map<String, Object> prepared2 =
@@ -468,14 +468,18 @@ public class MapProxyTest {
                         .put("userDetails", ImmutableList.of(
                                 ImmutableMap.of("id", "1", "note", "Note1"))
                         )
-                        .put("id", "1")
+                        .put("__id", "1")
                         .build();
 
-        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).withIdentifierField("id").newInstance();
-        User user2 = MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).withIdentifierField("id").newInstance();
+        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).withIdentifierField("__id").newInstance();
+        User user2 = MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).withIdentifierField("__id").newInstance();
 
         assertTrue(user1.equals(user2));
         assertTrue(user2.equals(user1));
+
+        assertTrue(user1.identifier().equals(user2.identifier()));
+        assertTrue(user2.identifier().equals(user1.identifier()));
+
     }
 
     @Test

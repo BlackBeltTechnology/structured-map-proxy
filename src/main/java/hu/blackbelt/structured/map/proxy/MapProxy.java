@@ -56,6 +56,7 @@ public final class MapProxy implements InvocationHandler {
     public static final String METHOD_IS = "is";
     public static final String METHOD_TO_MAP = "toMap";
     public static final String METHOD_GET_ORIGINAL_MAP = "getOriginalMap";
+    public static final String METHOD_GET_INTERNAL_MAP = "getInternalMap";
     public static final String METHOD_TO_STRING = "toString";
     public static final String METHOD_HASH_CODE = "hashCode";
     public static final String METHOD_EQUALS = "equals";
@@ -617,11 +618,17 @@ public final class MapProxy implements InvocationHandler {
         } else if (obj.getClass().isAssignableFrom(clazz) || clazz.isAssignableFrom(obj.getClass())) {
             if (params.getIdentifierField() == null) {
                 return obj.toString().equals(proxy.toString());
+            } else if (obj instanceof MapHolder) {
+                MapHolder holder = (MapHolder) obj;
+                Object thisId = internal.get(params.getIdentifierField());
+                Object thatId = holder.getInternalMap().get(params.getIdentifierField());
+                return thisId != null && thisId.equals(thatId);
+            } else {
+                Method getId = ReflectionUtil.findGetter(obj.getClass(), params.getIdentifierField());
+                Object thisId = internal.get(params.getIdentifierField());
+                Object thatId = getId.invoke(obj);
+                return thisId != null && thisId.equals(thatId);
             }
-            Method getId = ReflectionUtil.findGetter(obj.getClass(), params.getIdentifierField());
-            Object thisId = internal.get(params.getIdentifierField());
-            Object thatId = getId.invoke(obj);
-            return thisId != null && thisId.equals(thatId);
         }
         return false;
     }
@@ -769,14 +776,16 @@ public final class MapProxy implements InvocationHandler {
             return invokeEquals(proxy, args);
         } else if (!METHOD_SET.equals(m.getName()) && m.getName().startsWith(METHOD_SET)) {
             invokeSet(m, args);
+        } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
+            return original;
+        } else if (METHOD_GET_INTERNAL_MAP.equals(m.getName())) {
+            return internal;
         } else if (!METHOD_GET.equals(m.getName()) && m.getName().startsWith(METHOD_GET)) {
             return invokeGet(m);
         } else if (!METHOD_IS.equals(m.getName()) && m.getName().startsWith(METHOD_IS)) {
             return invokeIs(m);
         } else if (METHOD_TO_MAP.equals(m.getName())) {
             return invokeToMap();
-        } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
-            return original;
         } else if (METHOD_TO_STRING.equals(m.getName())) {
             return invokeToString();
         } else if (METHOD_ADAPT_TO.equals(m.getName())) {
