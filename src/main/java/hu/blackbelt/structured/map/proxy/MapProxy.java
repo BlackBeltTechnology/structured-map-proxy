@@ -56,6 +56,7 @@ public final class MapProxy implements InvocationHandler {
     public static final String METHOD_IS = "is";
     public static final String METHOD_TO_MAP = "toMap";
     public static final String METHOD_GET_ORIGINAL_MAP = "getOriginalMap";
+    public static final String METHOD_GET_INTERNAL_MAP = "getInternalMap";
     public static final String METHOD_TO_STRING = "toString";
     public static final String METHOD_HASH_CODE = "hashCode";
     public static final String METHOD_EQUALS = "equals";
@@ -185,33 +186,41 @@ public final class MapProxy implements InvocationHandler {
     private static CacheLoader<Class, Map<String, AttributeInfo>> typeInfoCacheLoader = new CacheLoader<Class, Map<String, AttributeInfo>>() {
         @Override
         public Map<String, AttributeInfo> load(Class sourceClass) throws Exception {
-        Map<String, AttributeInfo> targetTypes = new ConcurrentHashMap<>();
-        Set<Class> classesToIntrospect = getWithSuperClasses(sourceClass);
-        Set<PropertyDescriptor> propertyDescriptors = new HashSet<>();
-        for (Class c : classesToIntrospect) {
-            for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
-                propertyDescriptors.add(propertyDescriptor);
-            }
-        }
-
-        for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
-            String attrName = propertyDescriptor.getName();
-            final Class propertyType = propertyDescriptor.getPropertyType();
-            Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
-
-            String mapKey = attrName;
-            boolean composite = false;
-            if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Embedded.class) != null) {
-                composite = true;
+            Map<String, AttributeInfo> targetTypes = new ConcurrentHashMap<>();
+            Set<Class> classesToIntrospect = getWithSuperClasses(sourceClass);
+            Set<PropertyDescriptor> propertyDescriptors = new HashSet<>();
+            for (Class c : classesToIntrospect) {
+                for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
+                    propertyDescriptors.add(propertyDescriptor);
+                }
             }
 
-            if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class) != null) {
-                mapKey = propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class).name();
+            for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
+                String attrName = propertyDescriptor.getName();
+                final Class propertyType = propertyDescriptor.getPropertyType();
+                Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
+
+                String mapKey = attrName;
+                boolean composite = false;
+                if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Embedded.class) != null) {
+                    composite = true;
+                }
+
+                if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class) != null) {
+                    mapKey = propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class).name();
+                }
+
+                targetTypes.put(attrName, new AttributeInfo(mapKey, propertyType, parametrizedType.orElse(null), propertyDescriptor, composite));
             }
 
-            targetTypes.put(attrName, new AttributeInfo(mapKey, propertyType, parametrizedType.orElse(null), propertyDescriptor, composite));
-        }
-        return targetTypes;
+            Arrays.stream(sourceClass.getMethods()).
+                    filter(m -> !m.getName().startsWith(METHOD_GET)
+                            && m.getParameterCount() == 0
+                            && m.getReturnType().isInterface()
+                            && m.isAnnotationPresent(Embedded.class)).forEach(m -> {
+                                targetTypes.put(m.getName(), new AttributeInfo(m.getName(), m.getReturnType(), null, null, true));
+                    });
+            return targetTypes;
         }
     };
 
@@ -328,14 +337,16 @@ public final class MapProxy implements InvocationHandler {
         Map<String, AttributeInfo> finalBeanInfos = beanInfos;
 
         targetInfos.forEach((attrName, attrInfo) -> {
-            Object value = null;
-            try {
-                value = finalBeanInfos.get(attrName).propertyDescriptor.getReadMethod().invoke(bean);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
-            }
-            if (finalBeanInfos.containsKey(attrName)) {
-                map.put(getKeyName(clazz, attrName), value);
+            if (!attrInfo.isComposite()) {
+                Object value = null;
+                try {
+                    value = finalBeanInfos.get(attrName).propertyDescriptor.getReadMethod().invoke(bean);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+                if (finalBeanInfos.containsKey(attrName)) {
+                    map.put(getKeyName(clazz, attrName), value);
+                }
             }
         });
         toProxyMap(clazz, params, map);
@@ -607,11 +618,17 @@ public final class MapProxy implements InvocationHandler {
         } else if (obj.getClass().isAssignableFrom(clazz) || clazz.isAssignableFrom(obj.getClass())) {
             if (params.getIdentifierField() == null) {
                 return obj.toString().equals(proxy.toString());
+            } else if (obj instanceof MapHolder) {
+                MapHolder holder = (MapHolder) obj;
+                Object thisId = internal.get(params.getIdentifierField());
+                Object thatId = holder.getInternalMap().get(params.getIdentifierField());
+                return thisId != null && thisId.equals(thatId);
+            } else {
+                Method getId = ReflectionUtil.findGetter(obj.getClass(), params.getIdentifierField());
+                Object thisId = internal.get(params.getIdentifierField());
+                Object thatId = getId.invoke(obj);
+                return thisId != null && thisId.equals(thatId);
             }
-            Method getId = ReflectionUtil.findGetter(obj.getClass(), params.getIdentifierField());
-            Object thisId = internal.get(params.getIdentifierField());
-            Object thatId = getId.invoke(obj);
-            return thisId != null && thisId.equals(thatId);
         }
         return false;
     }
@@ -656,7 +673,13 @@ public final class MapProxy implements InvocationHandler {
         return mapKey;
     }
     private Object invokeGet(Method m) {
-        String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
+        String attrName = null;
+        if (m.getName().startsWith(METHOD_GET)) {
+            attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
+        } else {
+            attrName = m.getName();
+        }
+
         AttributeInfo attributeInfo = null;
         try {
             attributeInfo = typeInfoCache.get(clazz).get(attrName);
@@ -753,18 +776,22 @@ public final class MapProxy implements InvocationHandler {
             return invokeEquals(proxy, args);
         } else if (!METHOD_SET.equals(m.getName()) && m.getName().startsWith(METHOD_SET)) {
             invokeSet(m, args);
+        } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
+            return original;
+        } else if (METHOD_GET_INTERNAL_MAP.equals(m.getName())) {
+            return internal;
         } else if (!METHOD_GET.equals(m.getName()) && m.getName().startsWith(METHOD_GET)) {
             return invokeGet(m);
         } else if (!METHOD_IS.equals(m.getName()) && m.getName().startsWith(METHOD_IS)) {
             return invokeIs(m);
         } else if (METHOD_TO_MAP.equals(m.getName())) {
             return invokeToMap();
-        } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
-            return original;
         } else if (METHOD_TO_STRING.equals(m.getName())) {
             return invokeToString();
         } else if (METHOD_ADAPT_TO.equals(m.getName())) {
             return invokeAdaptTo(proxy, args);
+        } else if (m.getReturnType().isInterface() && m.getParameterCount() == 0 && m.isAnnotationPresent(Embedded.class)) {
+            return invokeGet(m);
         }
         return null;
     }
