@@ -261,7 +261,7 @@ UserBean bean = user.adaptTo(UserBean.class);
 ----
 
 === hashCode
-You cen define `hashCode` method in interface. On that case that method will be
+You can define static `hashCode` method on the interface. On that case that method will be
 performed on the proxy's object call. If not defined the `toString` method's `hashCode` is
 called.
 
@@ -270,7 +270,7 @@ called.
 public interface A {
    String getFld();
    static int hashCode(A o) {
-      o.getFld.hashCode()
+      o.getFld().hashCode();
    }
 }
 ----
@@ -278,8 +278,8 @@ public interface A {
 
 === toString
 
-You cen define `toString` method in interface. On that case that method will be
-performed on the proxy's object call. If not defined the fields ara iterated and printed.
+You can define static `toString` method on the interface. On that case that method will be
+performed on the proxy's object call. If not defined the fields are iterated and printed.
 
 [source,java]
 ----
@@ -304,7 +304,7 @@ String getId();
 
 === equals
 
-You cen define `equals` method in interface. On that case that method will be
+You can define static `equals` method on the interface. On that case that method will be
 performed on the proxy's object call. If not defined the `toString` method's `equals` is
 called.
 
@@ -420,6 +420,13 @@ public interface Entity extends Serializable {
 In this example the Entity's map will contain `__type` and `__id` fields with `name`.
 So in the Map it is flattened, bu8t from MapProxy it can be accessed as an embedded
 MapProxy.
+
+== System properties
+
+For better performance some fields and methods are cached. The cache eviction time
+can be set as system property with `-D`.
+
+`structuredMapProxyCacheExpireInSecond` is `60` by default.
 
 == Contributing to the project
 

@@ -65,6 +65,9 @@ public final class MapProxy implements InvocationHandler {
     public static final String METHOD_ADAPT_TO = "adaptTo";
     public static final String DEFAULT_ENUM_MAPPING_METHOD = "name";
 
+    public static final String STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND = "structuredMapProxyCacheExpireInSecond";
+    public static final String DEFULT_STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND = "60";
+
     private static final Map<Class<?>, Class<?>> PRIMITIVES_TO_WRAPPERS
             = new ImmutableMap.Builder<Class<?>, Class<?>>()
             .put(boolean.class, Boolean.class)
@@ -263,12 +266,12 @@ public final class MapProxy implements InvocationHandler {
 
     private static LoadingCache<Class, Map<String, AttributeInfo>> typeInfoCache = CacheBuilder
             .newBuilder()
-            .expireAfterAccess(Long.parseLong(System.getProperty("structuredMapProxyCacheExpireInSecond", "60")), TimeUnit.SECONDS)
+            .expireAfterAccess(Long.parseLong(System.getProperty(STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND, DEFULT_STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND)), TimeUnit.SECONDS)
             .build(typeInfoCacheLoader);
 
     private static LoadingCache<Class, Map<String, Method>> staticMethodCache = CacheBuilder
             .newBuilder()
-            .expireAfterAccess(Long.parseLong(System.getProperty("structuredMapProxyCacheExpireInSecond", "60")), TimeUnit.SECONDS)
+            .expireAfterAccess(Long.parseLong(System.getProperty(STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND, DEFULT_STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND)), TimeUnit.SECONDS)
             .build(staticMethodCacheLoader);
 
 
