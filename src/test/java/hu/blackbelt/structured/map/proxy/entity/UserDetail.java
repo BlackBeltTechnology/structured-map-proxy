@@ -20,7 +20,12 @@ package hu.blackbelt.structured.map.proxy.entity;
  * #L%
  */
 
+import hu.blackbelt.structured.map.proxy.annotation.Key;
+
+import java.util.Objects;
+
 public interface UserDetail {
+    @Key(name = "__id")
     String getId();
 
     void setId(String id);
@@ -28,5 +33,22 @@ public interface UserDetail {
     String getNote();
 
     void setNote(String note);
+
+    static boolean equals(UserDetail o1, Object o2) {
+        if (o2 == null) {
+            return false;
+        }
+        if (UserDetail.class.isAssignableFrom(o2.getClass())) {
+            return o1.getId().equals(((UserDetail) o2).getId());
+        }
+        return false;
+    }
+
+    static String toString(UserDetail o1) {
+        return String.format("{ id: %s, note: %s }",
+                Objects.toString(o1.getId(), "null"),
+                Objects.toString(o1.getNote(), "null")
+        );
+    }
 
 }

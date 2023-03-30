@@ -23,10 +23,11 @@ package hu.blackbelt.structured.map.proxy;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import hu.blackbelt.structured.map.proxy.annotation.Embedded;
 import hu.blackbelt.structured.map.proxy.annotation.Key;
-import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -55,13 +56,17 @@ public final class MapProxy implements InvocationHandler {
     public static final String METHOD_GET = "get";
     public static final String METHOD_IS = "is";
     public static final String METHOD_TO_MAP = "toMap";
-    public static final String METHOD_GET_ORIGINAL_MAP = "getOriginalMap";
+    public static final String METHOD_GET_ORIGINAL_MAP = "$originalMap";
+    public static final String METHOD_GET_INTERNAL_MAP = "$internalMap";
     public static final String METHOD_TO_STRING = "toString";
     public static final String METHOD_HASH_CODE = "hashCode";
     public static final String METHOD_EQUALS = "equals";
     public static final String METHOD_PARSE = "parse";
     public static final String METHOD_ADAPT_TO = "adaptTo";
     public static final String DEFAULT_ENUM_MAPPING_METHOD = "name";
+
+    public static final String STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND = "structuredMapProxyCacheExpireInSecond";
+    public static final String DEFULT_STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND = "60";
 
     private static final Map<Class<?>, Class<?>> PRIMITIVES_TO_WRAPPERS
             = new ImmutableMap.Builder<Class<?>, Class<?>>()
@@ -104,7 +109,6 @@ public final class MapProxy implements InvocationHandler {
         public Builder<T> withParams(MapProxyParams params) {
             this.params.setImmutable(params.isImmutable());
             this.params.setNullSafeCollection(params.isNullSafeCollection());
-            this.params.setIdentifierField(params.getIdentifierField());
             this.params.setEnumMappingMethod(params.getEnumMappingMethod());
             this.params.setMapNullToOptionalAbsent(params.isMapNullToOptionalAbsent());
             return this;
@@ -117,11 +121,6 @@ public final class MapProxy implements InvocationHandler {
 
         public Builder<T> withNullSafeCollection(boolean nullSafeCollection) {
             this.params.setNullSafeCollection(nullSafeCollection);
-            return this;
-        }
-
-        public Builder<T> withIdentifierField(String identifierField) {
-            this.params.setIdentifierField(identifierField);
             return this;
         }
 
@@ -148,12 +147,11 @@ public final class MapProxy implements InvocationHandler {
         public T newInstance() {
             return MapProxy.newInstance(map, clazz, params);
         }
-
     }
 
     private static <T> T newInstance(Map<String, ?> map, Class clazz, MapProxyParams params) {
         try {
-            Set<Class> interfaces = getWithSuperClasses(clazz, MapHolder.class);
+            List<Class> interfaces = getWithSuperClasses(clazz, MapHolder.class);
             return (T) java.lang.reflect.Proxy.newProxyInstance(
                     new CompositeClassLoader(clazz.getClassLoader(), MapHolder.class.getClassLoader()),
                     interfaces.toArray(new Class[interfaces.size()]),
@@ -163,8 +161,8 @@ public final class MapProxy implements InvocationHandler {
         }
     }
 
-    private static Set<Class> getWithSuperClasses(Class ...classes) {
-        Set<Class> out = new HashSet<>();
+    private static List<Class> getWithSuperClasses(Class ...classes) {
+        List<Class> out = new ArrayList<>();
         for (Class o : classes) {
             Class subclass = o;
             out.add(subclass);
@@ -172,6 +170,7 @@ public final class MapProxy implements InvocationHandler {
         }
         return out;
     }
+
     @AllArgsConstructor
     @Getter
     private static class AttributeInfo {
@@ -185,40 +184,96 @@ public final class MapProxy implements InvocationHandler {
     private static CacheLoader<Class, Map<String, AttributeInfo>> typeInfoCacheLoader = new CacheLoader<Class, Map<String, AttributeInfo>>() {
         @Override
         public Map<String, AttributeInfo> load(Class sourceClass) throws Exception {
-        Map<String, AttributeInfo> targetTypes = new ConcurrentHashMap<>();
-        Set<Class> classesToIntrospect = getWithSuperClasses(sourceClass);
-        Set<PropertyDescriptor> propertyDescriptors = new HashSet<>();
-        for (Class c : classesToIntrospect) {
-            for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
-                propertyDescriptors.add(propertyDescriptor);
+            Map<String, AttributeInfo> targetTypes = new ConcurrentHashMap<>();
+            List<Class> classesToIntrospect = getWithSuperClasses(sourceClass);
+            Set<PropertyDescriptor> propertyDescriptors = new HashSet<>();
+            for (Class c : classesToIntrospect) {
+                for (PropertyDescriptor propertyDescriptor : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
+                    propertyDescriptors.add(propertyDescriptor);
+                }
             }
+
+            for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
+                String attrName = propertyDescriptor.getName();
+                final Class propertyType = propertyDescriptor.getPropertyType();
+                Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
+
+                String mapKey = attrName;
+                boolean composite = false;
+                if (propertyDescriptor.getReadMethod() != null
+                        && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Embedded.class) != null
+                        && propertyDescriptor.getReadMethod().getReturnType().isInterface()
+                ) {
+                    composite = true;
+                }
+
+                if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class) != null) {
+                    mapKey = propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class).name();
+                }
+
+                targetTypes.put(attrName, new AttributeInfo(mapKey, propertyType, parametrizedType.orElse(null), propertyDescriptor, composite));
+            }
+
+            Arrays.stream(sourceClass.getMethods()).
+                    filter(m -> !m.getName().startsWith(METHOD_GET)
+                            && m.getParameterCount() == 0
+                            && m.getReturnType().isInterface()
+                            && m.isAnnotationPresent(Embedded.class)).forEach(m -> {
+                                targetTypes.put(m.getName(), new AttributeInfo(m.getName(), m.getReturnType(), null, null, true));
+                    });
+            return targetTypes;
         }
+    };
 
-        for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
-            String attrName = propertyDescriptor.getName();
-            final Class propertyType = propertyDescriptor.getPropertyType();
-            Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
+    private static CacheLoader<Class, Map<String, Method>> staticMethodCacheLoader = new CacheLoader<Class, Map<String, Method>>() {
+        @Override
+        public Map<String, Method> load(Class clazz) throws Exception {
+            Optional<Method> equals = Optional.empty();
+            Optional<Method> toString = Optional.empty();
+            Optional<Method> hashCode = Optional.empty();
 
-            String mapKey = attrName;
-            boolean composite = false;
-            if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Embedded.class) != null) {
-                composite = true;
+            for (Class cl : getWithSuperClasses(clazz)) {
+                if (equals.isEmpty()) {
+                    equals = Arrays.stream(cl.getMethods()).filter(m ->
+                            m.getName().equals(METHOD_EQUALS)
+                                    && m.getParameterCount() == 2
+                                    && m.getParameters()[0].getType().isAssignableFrom(clazz)
+                                    && (boolean.class.isAssignableFrom(m.getReturnType())
+                                    || Boolean.class.isAssignableFrom(m.getReturnType()))).findFirst();
+                }
+                if (toString.isEmpty()) {
+                    toString = Arrays.stream(cl.getMethods()).filter(m ->
+                            m.getName().equals(METHOD_TO_STRING)
+                                    && m.getParameterCount() == 1
+                                    && m.getParameters()[0].getType().isAssignableFrom(clazz)
+                                    && String.class.isAssignableFrom(m.getReturnType())).findFirst();
+                }
+                if (hashCode.isEmpty()) {
+                    hashCode = Arrays.stream(cl.getMethods()).filter(m ->
+                            m.getName().equals(METHOD_HASH_CODE)
+                                    && m.getParameterCount() == 1
+                                    && m.getParameters()[0].getType().isAssignableFrom(clazz)
+                                    && int.class.isAssignableFrom(m.getReturnType())).findFirst();
+                }
             }
-
-            if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class) != null) {
-                mapKey = propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class).name();
-            }
-
-            targetTypes.put(attrName, new AttributeInfo(mapKey, propertyType, parametrizedType.orElse(null), propertyDescriptor, composite));
-        }
-        return targetTypes;
+            Map<String, Method> ret = new HashMap<>();
+            equals.ifPresent((c) -> ret.put(METHOD_EQUALS, c));
+            toString.ifPresent((c) -> ret.put(METHOD_TO_STRING, c));
+            hashCode.ifPresent((c) -> ret.put(METHOD_HASH_CODE, c));
+            return ret;
         }
     };
 
     private static LoadingCache<Class, Map<String, AttributeInfo>> typeInfoCache = CacheBuilder
             .newBuilder()
-            .expireAfterAccess(Long.parseLong(System.getProperty("structuredMapProxyCacheExpireInSecond", "60")), TimeUnit.SECONDS)
+            .expireAfterAccess(Long.parseLong(System.getProperty(STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND, DEFULT_STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND)), TimeUnit.SECONDS)
             .build(typeInfoCacheLoader);
+
+    private static LoadingCache<Class, Map<String, Method>> staticMethodCache = CacheBuilder
+            .newBuilder()
+            .expireAfterAccess(Long.parseLong(System.getProperty(STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND, DEFULT_STRUCTURED_MAP_PROXY_CACHE_EXPIRE_IN_SECOND)), TimeUnit.SECONDS)
+            .build(staticMethodCacheLoader);
+
 
     private <T> MapProxy(Class clazz, Map<String, ?> map, MapProxyParams params) throws IntrospectionException {
         original = map;
@@ -237,7 +292,7 @@ public final class MapProxy implements InvocationHandler {
             throw new RuntimeException(e);
         }
 
-        Map<String, Object> proxyMap = new HashMap<>();
+        Map<String, Object> proxyMap = new LinkedHashMap<>();
 
         typeInfo.forEach((attrName, attrInfo) -> {
             final String mapKey = attrInfo.mapKey;
@@ -304,6 +359,7 @@ public final class MapProxy implements InvocationHandler {
                         .withParams(params)
                         .withMap(map)
                         .newInstance()).toMap());
+
             }
         });
 
@@ -324,18 +380,20 @@ public final class MapProxy implements InvocationHandler {
             throw new RuntimeException(e);
         }
 
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new LinkedHashMap<>();
         Map<String, AttributeInfo> finalBeanInfos = beanInfos;
 
         targetInfos.forEach((attrName, attrInfo) -> {
-            Object value = null;
-            try {
-                value = finalBeanInfos.get(attrName).propertyDescriptor.getReadMethod().invoke(bean);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
-            }
-            if (finalBeanInfos.containsKey(attrName)) {
-                map.put(getKeyName(clazz, attrName), value);
+            if (!attrInfo.isComposite()) {
+                Object value = null;
+                try {
+                    value = finalBeanInfos.get(attrName).propertyDescriptor.getReadMethod().invoke(bean);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+                if (finalBeanInfos.containsKey(attrName)) {
+                    map.put(getKeyName(clazz, attrName), value);
+                }
             }
         });
         toProxyMap(clazz, params, map);
@@ -499,11 +557,13 @@ public final class MapProxy implements InvocationHandler {
                 keyMapper = keyMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapKeyType, params)));
             }
             if (mapValueType.isInterface()) {
-                valueMapper = valueMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapValueType, params)));
+                valueMapper = valueMapper.andThen(toValueFunction(clazz, params).andThen(valueToMapProxyFunction(mapValueType, params).andThen(v -> v == null ? Optional.empty() : v)));
             }
             transformedValue = (Map) value.entrySet().stream().collect(Collectors.toMap(keyMapper, valueMapper));
             if (!params.isImmutable()) {
-                transformedValue = new HashMap<>(transformedValue);
+                transformedValue = new LinkedHashMap<>(transformedValue);
+            } else {
+                transformedValue = ImmutableMap.copyOf(transformedValue);
             }
         } else {
             transformedValue = value;
@@ -531,7 +591,9 @@ public final class MapProxy implements InvocationHandler {
             }
             transformedValue = (Map) value.entrySet().stream().collect(Collectors.toMap(keyMapper, valueMapper));
             if (!params.isImmutable()) {
-                transformedValue = new HashMap<>(transformedValue);
+                transformedValue = new LinkedHashMap<>(transformedValue);
+            } else {
+                transformedValue = ImmutableMap.copyOf(transformedValue);
             }
         } else {
             transformedValue = value;
@@ -551,6 +613,8 @@ public final class MapProxy implements InvocationHandler {
                         .collect(toCollectorForType(propertyType));
                 if (!params.isImmutable()) {
                     transformedValue = mutableCollection(propertyType, transformedValue);
+                } else {
+                    transformedValue = immutableCollection(propertyType, transformedValue);
                 }
             }
         }
@@ -572,6 +636,8 @@ public final class MapProxy implements InvocationHandler {
         }
          if (!params.isImmutable()) {
              transformedValue = mutableCollection(beanPropertyType, transformedValue);
+         } else {
+             transformedValue = immutableCollection(beanCollectionType, transformedValue);
          }
          return transformedValue;
     }
@@ -581,10 +647,14 @@ public final class MapProxy implements InvocationHandler {
         if (valueTransformed == null) {
             return null;
         }
-        try {
-            valueRet = (Collection) createNewInstance(returnType);
-            valueRet.addAll(valueTransformed);
-        } catch (Exception ex) {
+        if (!returnType.isInterface()) {
+            try {
+                valueRet = (Collection) createNewInstance(returnType);
+                valueRet.addAll(valueTransformed);
+            } catch (Exception ex) {
+            }
+        }
+        if (valueRet == null) {
             if (List.class.isAssignableFrom(returnType)) {
                 valueRet = new ArrayList<>(valueTransformed);
             } else if (Set.class.isAssignableFrom(returnType)) {
@@ -593,25 +663,45 @@ public final class MapProxy implements InvocationHandler {
                 valueRet = new ArrayList<>(valueTransformed);
             }
         }
+
         return valueRet;
     }
 
-    private int invokeHashCode(Object proxy) {
-        return proxy.toString().hashCode();
+    private static Collection immutableCollection(Class returnType, Collection valueTransformed) {
+        Collection valueRet = null;
+        if (valueTransformed == null) {
+            return null;
+        }
+        if (List.class.isAssignableFrom(returnType)) {
+            valueRet = ImmutableList.copyOf(valueTransformed);
+        } else if (Set.class.isAssignableFrom(returnType)) {
+            valueRet = ImmutableSet.copyOf(valueTransformed);
+        } else {
+            valueRet = ImmutableList.copyOf(valueTransformed);
+        }
+        return valueRet;
     }
 
-    private boolean invokeEquals(Object proxy, Object[] args) throws InvocationTargetException, IllegalAccessException {
+    private int invokeHashCode(Object proxy) throws ExecutionException, InvocationTargetException, IllegalAccessException {
+        Optional<Method> hashCode = Optional.ofNullable(staticMethodCache.get(clazz).get(METHOD_HASH_CODE));
+        if (hashCode.isPresent()) {
+            return (int) hashCode.get().invoke(null, proxy);
+        } else {
+            return invokeToString(proxy).hashCode();
+        }
+    }
+
+    private boolean invokeEquals(Object proxy, Object[] args) throws InvocationTargetException, IllegalAccessException, ExecutionException {
         Object obj = args[0];
         if (obj == null) {
             return false;
-        } else if (obj.getClass().isAssignableFrom(clazz) || clazz.isAssignableFrom(obj.getClass())) {
-            if (params.getIdentifierField() == null) {
-                return obj.toString().equals(proxy.toString());
+        } if (clazz.isAssignableFrom(obj.getClass())) {
+            Optional<Method> equals = Optional.ofNullable(staticMethodCache.get(proxy.getClass()).get(METHOD_EQUALS));
+            if (equals.isPresent()) {
+                return (Boolean) equals.get().invoke(null, proxy, obj);
+            } else {
+                return proxy.toString().equals(obj.toString());
             }
-            Method getId = ReflectionUtil.findGetter(obj.getClass(), params.getIdentifierField());
-            Object thisId = internal.get(params.getIdentifierField());
-            Object thatId = getId.invoke(obj);
-            return thisId != null && thisId.equals(thatId);
         }
         return false;
     }
@@ -656,7 +746,13 @@ public final class MapProxy implements InvocationHandler {
         return mapKey;
     }
     private Object invokeGet(Method m) {
-        String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
+        String attrName = null;
+        if (m.getName().startsWith(METHOD_GET)) {
+            attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
+        } else {
+            attrName = m.getName();
+        }
+
         AttributeInfo attributeInfo = null;
         try {
             attributeInfo = typeInfoCache.get(clazz).get(attrName);
@@ -711,13 +807,34 @@ public final class MapProxy implements InvocationHandler {
     }
 
     private Object invokeToMap() {
-        Map<Object, Object> map = new HashMap<>();
-        for (Map.Entry entry : internal.entrySet()) {
-            map.put(
-                    mapEntryKey().andThen(keyName(clazz)).andThen(toValueFunction(clazz, params)).apply(entry),
-                    mapEntryValue().andThen(toValueFunction(clazz, params)).apply(entry));
+        final Map<Object, Object> map = new LinkedHashMap<>();
+
+        Map<String, AttributeInfo> typeInfo = null;
+        try {
+            typeInfo = typeInfoCache.get(clazz);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
         }
-        return map;
+
+        typeInfo.forEach((attrName, attrInfo) -> {
+            final String mapKey = attrInfo.getMapKey();
+            if (attrInfo.isComposite() && attrInfo.propertyType.isInterface()) {
+                Map<String, Object> embeddedMap = ((MapHolder) MapProxy.builder(attrInfo.propertyType).withMap(internal).withParams(params).newInstance()).toMap();
+                map.putAll(embeddedMap);
+            }
+            if (internal.containsKey(mapKey)) {
+                Object value = internal.get(mapKey);
+                map.put(
+                        mapKey,
+                        toValueFunction(clazz, params).andThen(v1 -> (v1 == null && params.isImmutable()) ? Optional.empty() : v1).apply(value)
+                );
+            }
+        });
+        if (params.isImmutable()) {
+            return ImmutableMap.copyOf(map);
+        } else {
+            return new LinkedHashMap<>(map);
+        }
     }
 
     private <T> T invokeAdaptTo(Object proxy, Object args[]) {
@@ -738,12 +855,17 @@ public final class MapProxy implements InvocationHandler {
         }
     }
 
-    private String invokeToString() {
-        Map<Object, Object> map = new LinkedHashMap<>();
-        for (Map.Entry entry : internal.entrySet().stream().sorted(Map.Entry.comparingByKey()).collect(Collectors.toList())) {
-            map.put(entry.getKey(), entry.getValue());
+    private String invokeToString(Object proxy) throws ExecutionException, InvocationTargetException, IllegalAccessException {
+        Optional<Method> toString = Optional.ofNullable(staticMethodCache.get(clazz).get(METHOD_TO_STRING));
+        if (toString.isPresent()) {
+            return (String) toString.get().invoke(null, proxy);
+        } else {
+            Map<Object, Object> map = new LinkedHashMap<>();
+            for (Map.Entry entry : internal.entrySet().stream().sorted(Map.Entry.comparingByKey()).collect(Collectors.toList())) {
+                map.put(entry.getKey(), entry.getValue());
+            }
+            return "PROXY" + map;
         }
-        return "PROXY" + map;
     }
 
     public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
@@ -753,18 +875,22 @@ public final class MapProxy implements InvocationHandler {
             return invokeEquals(proxy, args);
         } else if (!METHOD_SET.equals(m.getName()) && m.getName().startsWith(METHOD_SET)) {
             invokeSet(m, args);
+        } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
+            return original;
+        } else if (METHOD_GET_INTERNAL_MAP.equals(m.getName())) {
+            return internal;
         } else if (!METHOD_GET.equals(m.getName()) && m.getName().startsWith(METHOD_GET)) {
             return invokeGet(m);
         } else if (!METHOD_IS.equals(m.getName()) && m.getName().startsWith(METHOD_IS)) {
             return invokeIs(m);
         } else if (METHOD_TO_MAP.equals(m.getName())) {
             return invokeToMap();
-        } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
-            return original;
         } else if (METHOD_TO_STRING.equals(m.getName())) {
-            return invokeToString();
+            return invokeToString(proxy);
         } else if (METHOD_ADAPT_TO.equals(m.getName())) {
             return invokeAdaptTo(proxy, args);
+        } else if (m.getReturnType().isInterface() && m.getParameterCount() == 0 && m.isAnnotationPresent(Embedded.class)) {
+            return invokeGet(m);
         }
         return null;
     }
@@ -854,11 +980,13 @@ public final class MapProxy implements InvocationHandler {
         if (value instanceof MapHolder) {
             return ((MapHolder) value).toMap();
         } else if (value instanceof Map) {
-            return ((Map) value).entrySet().stream().collect(
-                    Collectors.toMap(
-                            mapEntryKey().andThen(keyName(proxyClass)).andThen(toValueFunction(proxyClass, params)),
-                            mapEntryValue().andThen(toValueFunction(proxyClass, params))
-                    ));
+            final Map<Object, Object> map = new LinkedHashMap<>();
+            ((Map<Object, Object>) value).forEach((k,v) ->
+                map.put(
+                        keyName(proxyClass).andThen(toValueFunction(proxyClass, params)).apply(k),
+                        toValueFunction(proxyClass, params).apply(v)
+                ));
+            return map;
         } else if (value instanceof Collection) {
             return ((Collection) value).stream().map(v -> {
                 if (v instanceof MapHolder) {
