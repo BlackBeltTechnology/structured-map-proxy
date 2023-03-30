@@ -79,7 +79,7 @@ public class MapProxyTest {
         assertEquals("teszt", getMapHolderValue(user, "loginName", String.class));
 
         assertEquals("1", user.getId());
-        assertEquals("1", getMapHolderValue(user, "id", String.class));
+        assertEquals("1", getMapHolderValue(user, "__id", String.class));
 
         assertEquals("Note1", user.getUserDetails().iterator().next().getNote());
         assertEquals("Note1", ((Map<String, Object>) getMapHolderValue(user, "userDetails", Collection.class).
@@ -89,8 +89,8 @@ public class MapProxyTest {
         assertEquals("v1", getMapHolderValue(user, "mapWithoutType", Map.class).get("k1"));
 
         assertEquals("1", ((Map<String, Object>) getMapHolderValue(user, "userDetails", Collection.class).
-                iterator().next()).get("id"));
-        assertEquals("1", getMapHolderValue(user.getUserDetails().iterator().next(), "id", String.class));
+                iterator().next()).get("__id"));
+        assertEquals("1", getMapHolderValue(user.getUserDetails().iterator().next(), "__id", String.class));
 
         assertEquals("Test1", user.getCollectionWithoutType().iterator().next());
         assertEquals("Test1", getMapHolderValue(user, "collectionWithoutType", Collection.class)
@@ -101,14 +101,14 @@ public class MapProxyTest {
                 .iterator().next()).get("k1"));
 
         assertEquals("3", getMapHolderValue(user.getMapWithValueType()
-                .get("k1"), "id", String.class));
-        assertEquals("3", ((Map) getMapHolderValue(user, "mapWithValueType", Map.class).get("k1")).get("id"));
+                .get("k1"), "__id", String.class));
+        assertEquals("3", ((Map) getMapHolderValue(user, "mapWithValueType", Map.class).get("k1")).get("__id"));
 
         Map<UserDetail, UserDetail> keyValue = user.getMapWithValueTypeAndKeyType();
         assertEquals("5", getMapHolderValue(user.getMapWithValueTypeAndKeyType()
-                .get(userDetail4), "id", String.class));
+                .get(userDetail4), "__id", String.class));
         assertEquals("5", ((Map) getMapHolderValue(user, "mapWithValueTypeAndKeyType", Map.class)
-                .get(((MapHolder) userDetail4).toMap())).get("id"));
+                .get(((MapHolder) userDetail4).toMap())).get("__id"));
 
         assertThat(user.getCountry().getName(), is("Austria"));
 
@@ -117,12 +117,12 @@ public class MapProxyTest {
 
     void assertMapStructure(Map map) {
         assertThat(map.get("active"), is(true));
-        assertThat(map.get("id"), is("1"));
+        assertThat(map.get("__id"), is("1"));
         assertThat(map.get("loginName"), is("teszt"));
         assertThat((Iterable<Map<String, Object>>) map.get("userDetails"), allOf(
                 contains(
-                        hasEntry(is("id"), is("1")),
-                        hasEntry(is("id"), is("2")))
+                        hasEntry(is("__id"), is("1")),
+                        hasEntry(is("__id"), is("2")))
         ));
         assertThat((Iterable<String>) map.get("collectionWithoutType"), contains("Test1", "Test2"));
         assertThat((Iterable<Map<Object, Object>>) map.get("collectionWithMapType"),
@@ -134,13 +134,13 @@ public class MapProxyTest {
 
         assertThat((Map<?, Map<Object, Object>>) map.get("mapWithValueType"),
                 hasEntry(is("k1"), allOf(
-                        hasEntry(is("id"), is("3")),
+                        hasEntry(is("__id"), is("3")),
                         hasEntry(is("note"), is("Note3"))
                 )));
 
         assertThat((Map<?, Map<Object, Object>>) map.get("singleUserDetail"),
                 allOf(
-                        hasEntry(is("id"), is("6")),
+                        hasEntry(is("__id"), is("6")),
                         hasEntry(is("note"), is("Note6"))
                 ));
 
@@ -191,7 +191,6 @@ public class MapProxyTest {
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(true)
-                .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
         Map map = ((MapHolder) user).toMap();
@@ -214,7 +213,6 @@ public class MapProxyTest {
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(true)
-                .withIdentifierField("id")
                 .withMapNullToOptionalAbsent(true)
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
@@ -282,7 +280,6 @@ public class MapProxyTest {
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(true)
-                .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
         Map map = ((MapHolder) user).toMap();
@@ -293,7 +290,6 @@ public class MapProxyTest {
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(false)
-                .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
         user.setXmiid("T1");
@@ -307,9 +303,9 @@ public class MapProxyTest {
     public void testBuildFromMap() {
         Map<String, Object> prepared = new HashMap<>();
         prepared.put("active", true);
-        prepared.put("id", "1");
+        prepared.put("__id", "1");
         prepared.put("loginName", "teszt");
-        prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("id", "1", "note", "Note1")));
+        prepared.put("userDetails", ImmutableList.of(ImmutableMap.of("__id", "1", "note", "Note1")));
         prepared.put("collectionWithoutType", ImmutableList.of("Test1", "Test2"));
         prepared.put("collectionWithMapType", ImmutableList.of(
                 ImmutableMap.of("k1", "v1"),
@@ -317,11 +313,11 @@ public class MapProxyTest {
         );
         prepared.put("mapWithoutType", ImmutableMap.of("k1", "v1"));
         prepared.put("mapWithValueType", ImmutableMap.of("k1",
-                ImmutableMap.of("id", "3", "note", "Note3"))
+                ImmutableMap.of("__id", "3", "note", "Note3"))
         );
         prepared.put("mapWithValueTypeAndKeyType", ImmutableMap.of(
-                ImmutableMap.of("id", "4", "note", "Note4"),
-                ImmutableMap.of("id", "5", "note", "Note5"))
+                ImmutableMap.of("__id", "4", "note", "Note4"),
+                ImmutableMap.of("__id", "5", "note", "Note5"))
         );
         prepared.put("singleUserDetail", null);
         prepared.put("sms", null);
@@ -330,7 +326,6 @@ public class MapProxyTest {
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(true)
-                .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
         performStructuralTestCases();
@@ -345,16 +340,15 @@ public class MapProxyTest {
         Map<String, Object> prepared = new HashMap<>();
         Map<String, Object> detail = new HashMap<>();
 
-        detail.put("id", "1");
+        detail.put("__id", "1");
         detail.put("note", "Note1");
 
         prepared.put("active", true);
-        prepared.put("id", "1");
+        prepared.put("__id", "1");
         prepared.put("singleUserDetail", detail );
 
         user = MapProxy.builder(User.class).
                 withMap(prepared)
-                .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
         assertTrue(user.getSingleUserDetail().getId().equals("1"));
@@ -364,11 +358,11 @@ public class MapProxyTest {
         Map<String, Object> prepared = new HashMap<>();
 
         prepared.put("active", true);
-        prepared.put("id", "1");
+        prepared.put("__id", "1");
         prepared.put("loginName", "teszt");
         prepared.put("userDetails", ImmutableList.of(
-                ImmutableMap.of("id", "1", "note", "Note1"),
-                ImmutableMap.of("id", "2", "note", "Note2"))
+                ImmutableMap.of("__id", "1", "note", "Note1"),
+                ImmutableMap.of("__id", "2", "note", "Note2"))
         );
         prepared.put("collectionWithoutType", ImmutableList.of("Test1", "Test2"));
         prepared.put("collectionWithMapType", ImmutableList.of(
@@ -383,13 +377,8 @@ public class MapProxyTest {
                 ImmutableMap.of("id", "5", "note", "Note5"))
         );
 
-        prepared.put("userDetails", ImmutableList.of(
-                ImmutableMap.of("id", "1", "note", "Note1"),
-                ImmutableMap.of("id", "2", "note", "Note2"))
-        );
-
         prepared.put("sms", null);
-        prepared.put("singleUserDetail", ImmutableMap.of("id", "6", "note", "Note6"));
+        prepared.put("singleUserDetail", ImmutableMap.of("__id", "6", "note", "Note6"));
         return prepared;
     }
 
@@ -397,20 +386,20 @@ public class MapProxyTest {
     public void testToString() {
         Map<String, Object> prepared = getSimpleProxyMap();
 
-        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").newInstance();
+        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).newInstance();
         assertEquals(
                 "PROXY{" +
+                        "__id=1, " +
                         "active=true, " +
                         "collectionWithMapType=[{k1=v1}, {k2=v2}], " +
                         "collectionWithoutType=[Test1, Test2], " +
-                        "id=1, " +
                         "loginName=teszt, " +
-                        "mapWithValueType={k1=PROXY{id=3, note=Note3}}, " +
-                        "mapWithValueTypeAndKeyType={PROXY{id=4, note=Note4}=PROXY{id=5, note=Note5}}, " +
+                        "mapWithValueType={k1={ id: 3, note: Note3 }}, " +
+                        "mapWithValueTypeAndKeyType={{ id: 4, note: Note4 }={ id: 5, note: Note5 }}, " +
                         "mapWithoutType={k1=v1}, " +
-                        "singleUserDetail=PROXY{id=6, note=Note6}, " +
+                        "singleUserDetail={ id: 6, note: Note6 }, " +
                         "sms=null, " +
-                        "userDetails=[PROXY{id=1, note=Note1}, PROXY{id=2, note=Note2}]" +
+                        "userDetails=[{ id: 1, note: Note1 }, { id: 2, note: Note2 }]" +
                         "}",
                 user.toString());
     }
@@ -420,7 +409,7 @@ public class MapProxyTest {
         Map<String, Object> prepared =getSimpleProxyMap();
         prepared.put("country", 3);
 
-        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").withEnumMappingMethod("getOrdinal").newInstance();
+        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withEnumMappingMethod("getOrdinal").newInstance();
 
         Map map = ((MapHolder) user).toMap();
         assertMapStructure(map);
@@ -431,10 +420,10 @@ public class MapProxyTest {
 
     @Test
     public void testAdaptToAnotherInterface() {
-        Map<String, Object> prepared =getSimpleProxyMap();
+        Map<String, Object> prepared = getSimpleProxyMap();
         prepared.put("country", 3);
 
-        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withIdentifierField("id").withEnumMappingMethod("getOrdinal").newInstance();
+        user = MapProxy.builder(User.class).withMap(prepared).withImmutable(true).withEnumMappingMethod("getOrdinal").newInstance();
 
         Map map = ((MapHolder) user).toMap();
         assertMapStructure(map);
@@ -471,8 +460,8 @@ public class MapProxyTest {
                         .put("__id", "1")
                         .build();
 
-        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).withIdentifierField("__id").newInstance();
-        User user2 = MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).withIdentifierField("__id").newInstance();
+        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).newInstance();
+        User user2 = MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).newInstance();
 
         assertTrue(user1.equals(user2));
         assertTrue(user2.equals(user1));
@@ -487,38 +476,38 @@ public class MapProxyTest {
         Map<String, Object> prepared1 =
                 ImmutableMap.<String, Object>builder()
                         .put("active", false)
-                        .put("id", "1")
+                        .put("__id", "1")
                         .build();
 
         Map<String, Object> prepared2 =
                 ImmutableMap.<String, Object>builder()
                         .put("active", true)
-                        .put("id", "1")
+                        .put("__id", "1")
                         .build();
 
-        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).withIdentifierField("id").newInstance();
-        User user2 =MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).withIdentifierField("id").newInstance();
+        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).newInstance();
+        User user2 =MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).newInstance();
 
         assertTrue(user1.equals(user2));
         assertTrue(user2.equals(user1));
     }
 
     @Test
-    public void testEqualsWithSameIdAndDifferentProxyValueWhenIdentifierFieldNotSet() {
+    public void testEqualsWithSameIdAndDifferentProxyValueWhenEqualsToNotSet() {
         Map<String, Object> prepared1 =
                 ImmutableMap.<String, Object>builder()
                         .put("active", false)
-                        .put("id", "1")
+                        .put("__id", "1")
                         .build();
 
         Map<String, Object> prepared2 =
                 ImmutableMap.<String, Object>builder()
                         .put("active", true)
-                        .put("id", "1")
+                        .put("__id", "1")
                         .build();
 
-        User user1 = MapProxy.builder(User.class).withMap(prepared1).withImmutable(true).newInstance();;
-        User user2 = MapProxy.builder(User.class).withMap(prepared2).withImmutable(true).newInstance();;
+        UserWithoutEquals user1 = MapProxy.builder(UserWithoutEquals.class).withMap(prepared1).withImmutable(true).newInstance();;
+        UserWithoutEquals user2 = MapProxy.builder(UserWithoutEquals.class).withMap(prepared2).withImmutable(true).newInstance();;
 
         assertFalse(user1.equals(user2));
         assertFalse(user2.equals(user1));
@@ -551,7 +540,6 @@ public class MapProxyTest {
         user = MapProxy.builder(User.class).
                 withMap(prepared)
                 .withImmutable(true)
-                .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
         UserDetailBean userDetailBean4 = UserDetailBean.builder()
@@ -633,7 +621,6 @@ public class MapProxyTest {
         user = MapProxy.builder(User.class).
                 withBean(userBean)
                 .withImmutable(true)
-                .withIdentifierField("id")
                 .withEnumMappingMethod("getOrdinal").newInstance();
 
         performStructuralTestCases();

@@ -26,7 +26,7 @@ import hu.blackbelt.structured.map.proxy.annotation.Key;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public interface Entity extends Serializable {
+public interface EntityWithoutEquals extends Serializable {
 
     @Embedded
     Identifier identifier();
@@ -51,13 +51,4 @@ public interface Entity extends Serializable {
     LocalDateTime getAuditUpdateTime();
     void setAuditUpdateTime(LocalDateTime auditUpdateTime);
 
-    static boolean equals(Entity o1, Object o2) {
-        if (o2 == null) {
-            return false;
-        }
-        if (Entity.class.isAssignableFrom(o2.getClass())) {
-            return o1.getId().equals(((Entity) o2).getId());
-        }
-        return false;
-    }
 }

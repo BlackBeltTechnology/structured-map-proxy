@@ -26,9 +26,9 @@ public interface MapHolder {
 
     Map<String, Object> toMap();
 
-    Map<String, Object> getOriginalMap();
+    Map<String, Object> $originalMap();
 
-    Map<String, Object> getInternalMap();
+    Map<String, Object> $internalMap();
 
     <T> T adaptTo(Class<T> clazz);
 }

@@ -69,7 +69,6 @@ public final class MapBuilderProxy implements InvocationHandler {
         private Builder<B, T> withParams(MapProxyParams params) {
             this.params.setImmutable(params.isImmutable());
             this.params.setNullSafeCollection(params.isNullSafeCollection());
-            this.params.setIdentifierField(params.getIdentifierField());
             this.params.setEnumMappingMethod(params.getEnumMappingMethod());
             this.params.setMapNullToOptionalAbsent(params.isMapNullToOptionalAbsent());
             return this;
@@ -82,11 +81,6 @@ public final class MapBuilderProxy implements InvocationHandler {
 
         public Builder<B, T> withNullSafeCollection(boolean nullSafeCollection) {
             this.params.setNullSafeCollection(nullSafeCollection);
-            return this;
-        }
-
-        public Builder<B, T> withIdentifierField(String identifierField) {
-            this.params.setIdentifierField(identifierField);
             return this;
         }
 

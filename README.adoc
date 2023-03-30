@@ -260,6 +260,80 @@ User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
 UserBean bean = user.adaptTo(UserBean.class);
 ----
 
+=== hashCode
+You cen define `hashCode` method in interface. On that case that method will be
+performed on the proxy's object call. If not defined the `toString` method's `hashCode` is
+called.
+
+[source,java]
+----
+public interface A {
+   String getFld();
+   static int hashCode(A o) {
+      o.getFld.hashCode()
+   }
+}
+----
+
+
+=== toString
+
+You cen define `toString` method in interface. On that case that method will be
+performed on the proxy's object call. If not defined the fields ara iterated and printed.
+
+[source,java]
+----
+public interface UserDetail {
+@Key(name = "__id")
+String getId();
+
+    void setId(String id);
+
+    String getNote();
+
+    void setNote(String note);
+
+    static String toString(UserDetail o1) {
+        return String.format("{ id: %s, note: %s }",
+                Objects.toString(o1.getId(), "null"),
+                Objects.toString(o1.getNote(), "null")
+        );
+    }
+}
+----
+
+=== equals
+
+You cen define `equals` method in interface. On that case that method will be
+performed on the proxy's object call. If not defined the `toString` method's `equals` is
+called.
+
+[source,java]
+----
+
+public interface UserDetail {
+@Key(name = "__id")
+String getId();
+
+    void setId(String id);
+
+    String getNote();
+
+    void setNote(String note);
+
+    static boolean equals(UserDetail o1, Object o2) {
+        if (o2 == null) {
+            return false;
+        }
+        if (UserDetail.class.isAssignableFrom(o2.getClass())) {
+            return o1.getId().equals(((UserDetail) o2).getId());
+        }
+        return false;
+    }
+
+}
+----
+
 == Supported options in MapProxy
 
 === Immutable option example
@@ -275,8 +349,6 @@ MapProxy supports the following options:
 Adjusts the fields and collections in the created proxy as immutable, which results in all mutating operation calls triggering an `IllegalStateException`
 - nullSafeCollection (default `false`)
 If set to `true` and given a collection is not set in the map, an empty collection will be returned. Which means that the collection in the interface can never be null.
-- identifierField (default `none`)
-Special field which can be used to determinate equality of 2 instances. When it is not defined the String representation of the 2 objects is used for `equals`
 - enumMappingMethod (default `name`)
 When an enum type is defined as a field, we need to define what type of representation is coded in the map.
 - mapNullToOptionalAbsent (default `false`)
