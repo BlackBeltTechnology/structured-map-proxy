@@ -43,14 +43,6 @@ public class MapProxyParams {
         this.nullSafeCollection = nullSafeCollection;
     }
 
-    public String getIdentifierField() {
-        return identifierField;
-    }
-
-    public void setIdentifierField(String identifierField) {
-        this.identifierField = identifierField;
-    }
-
     public String getEnumMappingMethod() {
         return enumMappingMethod;
     }
