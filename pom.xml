@@ -31,7 +31,7 @@
 
     <properties>
         <revision>2.0.0-SNAPSHOT</revision>
-        <maven>3.8.3</maven>
+        <maven>3.9.4</maven>
 
         <project-shortname>structured-map-proxy</project-shortname>
         <project-repositoryId>BlackBeltTechnology/structured-map-proxy</project-repositoryId>
