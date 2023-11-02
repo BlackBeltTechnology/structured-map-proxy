@@ -716,7 +716,7 @@ public final class MapProxy implements InvocationHandler {
         AttributeInfo attributeInfo = typeInfoCache.get(clazz).get(attrName);
         Object values = internal.get(getKeyName(clazz, attrName));
 
-        ArrayList<Object> valuesArray = (values instanceof Collection<?>)
+        List<Object> valuesArray = (values instanceof Collection<?>)
                 ? valuesArray = new ArrayList<>((Collection) values)
                 : new ArrayList<>();
 
@@ -733,7 +733,7 @@ public final class MapProxy implements InvocationHandler {
                            internal.put(e.getKey(), e.getValue());
                        });
                    } else {
-                       throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+                       throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
                    }
                 } else {
                     valuesArray.add(value);
@@ -753,7 +753,7 @@ public final class MapProxy implements InvocationHandler {
         AttributeInfo attributeInfo = typeInfoCache.get(clazz).get(attrName);
         Object values = internal.get(getKeyName(clazz, attrName));
 
-        ArrayList<Object> valuesArray = (values instanceof Collection<?>)
+        List<Object> valuesArray = (values instanceof Collection<?>)
                 ? valuesArray = new ArrayList<>((Collection) values)
                 : new ArrayList<>();
 
@@ -770,7 +770,7 @@ public final class MapProxy implements InvocationHandler {
                             internal.remove(e.getKey(), e.getValue());
                         });
                     } else {
-                        throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+                        throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
                     }
                 } else {
                     valuesArray.remove(value);
@@ -801,7 +801,7 @@ public final class MapProxy implements InvocationHandler {
                     internal.put(e.getKey(), e.getValue());
                 });
             } else {
-                throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+                throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
             }
         } else {
             internal.put(getKeyName(clazz, attrName), value);
@@ -868,7 +868,7 @@ public final class MapProxy implements InvocationHandler {
                         .newInstance();
                 return proxy;
             } else {
-                throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+                throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
             }
         } else {
             Object value = internal.get(getKeyName(clazz, attrName));
