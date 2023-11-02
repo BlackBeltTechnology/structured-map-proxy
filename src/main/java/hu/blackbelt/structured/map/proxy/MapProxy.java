@@ -54,8 +54,8 @@ public final class MapProxy implements InvocationHandler {
 
     public static final String METHOD_SET = "set";
     public static final String METHOD_GET = "get";
-    public static final String METHOD_ADD = "add";
-    public static final String METHOD_REMOVE = "remove";
+    public static final String METHOD_ADD = "addTo";
+    public static final String METHOD_REMOVE = "removeFrom";
     public static final String METHOD_IS = "is";
     public static final String METHOD_TO_MAP = "toMap";
     public static final String METHOD_GET_ORIGINAL_MAP = "$originalMap";

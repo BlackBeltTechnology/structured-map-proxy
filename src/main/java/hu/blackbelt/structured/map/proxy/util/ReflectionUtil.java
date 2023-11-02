@@ -36,7 +36,6 @@ public final class ReflectionUtil {
 
     private static final String GET_PREFIX = "get";
     private static final String SET_PREFIX = "set";
-    private static final String ADD_PREFIX = "addTo";
 
     private ReflectionUtil() {
     }
