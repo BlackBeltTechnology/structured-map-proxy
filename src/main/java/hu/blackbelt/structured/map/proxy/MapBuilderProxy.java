@@ -22,24 +22,36 @@ package hu.blackbelt.structured.map.proxy;
 
 import com.google.common.collect.ImmutableList;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Map;
+import java.lang.reflect.Proxy;
+import java.util.*;
+import java.util.stream.Collectors;
 
-public final class MapBuilderProxy implements InvocationHandler {
+@Slf4j
+public final class MapBuilderProxy<B, T> implements InvocationHandler {
+
+    MapProxyParams params;
 
     Object internal;
     String prefix;
 
-    MapProxyParams params;
+    Class<B> builderClass;
+
+    Class<T> targetClass;
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, Class<T> targetClass) {
         return new MapBuilderProxy.Builder<>(builderClass, targetClass);
     }
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, T targetInstance) {
+        if( targetInstance instanceof Proxy) {
+            Class<?>[] interfaces = targetInstance.getClass().getInterfaces();
+
+        }
+
         return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) targetInstance.getClass()).withTargetInstance(targetInstance);
     }
 
@@ -100,37 +112,89 @@ public final class MapBuilderProxy implements InvocationHandler {
                         .withParams(params)
                         .newInstance();
             }
+
             return (B) java.lang.reflect.Proxy.newProxyInstance(
                     builderClass.getClassLoader(),
                     new Class[] { builderClass },
-                    new MapBuilderProxy(targetInstance, builderMethodPrefix));
+                    new MapBuilderProxy(targetInstance, builderMethodPrefix, params, builderClass, targetClass));
         }
 
     }
 
-    private MapBuilderProxy(Object target, String builderMethodPrefix) {
+    private MapBuilderProxy(Object target, String builderMethodPrefix, MapProxyParams params, Class<B> builderClass, Class<T> targetClass) {
         this.internal = target;
         this.prefix = builderMethodPrefix;
+        this.params = params;
+        this.builderClass = builderClass;
+        this.targetClass = targetClass;
     }
 
     public Object invoke(Object proxy, Method m, Object[] args)
-            throws Throwable {
+    throws Throwable {
         if (m.getName().startsWith("build")) {
             return internal;
         } else {
+            // TODO: Clone
+            Map<String, Object> clonedMap = asMap(((MapHolder) internal).$internalMap());
+
+            T newInstance = MapProxy.builder(targetClass).withMap(clonedMap).withParams(params).newInstance();
+
+            B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
+
             String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
             if (prefix != null && !prefix.equals("")) {
                 attrName = Character.toUpperCase(m.getName().charAt(prefix.length())) + m.getName().substring(prefix.length() + 1);
             }
-            Method setterMethod = ReflectionUtil.findSetter(internal.getClass(), attrName);
+            Method setterMethod = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
             Object[] value = null;
             if (args[0] instanceof Object[]) {
                 value = new Object[]{ImmutableList.copyOf((Object[]) args[0])};
             } else {
                 value = new Object[]{args[0]};
             }
-            setterMethod.invoke(internal, value);
+            setterMethod.invoke(newInstance, value);
+
+            return b;
         }
-        return proxy;
+        //return proxy;
     }
+
+    Map<String, Object> asMap(Map<String, Object> map) {
+        return map != null ? asMapRec(map) : null;
+    }
+
+    Map<String, Object> asMapRec(Map<String, Object> map) {
+        for (String key : map.keySet()) {
+            if (key == null) {
+                throw new IllegalArgumentException("Map contains null key(s)");
+            }
+        }
+        Map<String, Object>  internal = new TreeMap<>();
+        for (String key : new TreeSet<>(map.keySet())) {
+            Object value = map.get(key);
+            if (value instanceof List) {
+                internal.put(key, ((List<Map<String, Object>>) value).stream().map(
+                        e -> asMap(e)).collect(Collectors.toList()));
+            } else if (value instanceof Collection) {
+                internal.put(key, ((Collection<Map<String, Object>>) value).stream().map(
+                        e -> asMap(e)).collect(Collectors.toSet()));
+            } else if (value instanceof Map) {
+                internal.put(key, asMap((Map<String, Object>) value));
+            } else {
+                internal.put(key, value);
+            }
+        }
+        return internal;
+    }
+
+
+//    Class<?>  urgeInterfaceses(Proxy proxy) {
+//
+//        Class<?>[] interfaces = proxy.getClass().getInterfaces();
+//
+//        // reduce interfaces
+//
+//    }
+
+
 }
