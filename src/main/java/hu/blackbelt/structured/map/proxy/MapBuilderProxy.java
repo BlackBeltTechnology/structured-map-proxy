@@ -23,7 +23,9 @@ package hu.blackbelt.structured.map.proxy;
 import com.google.common.collect.ImmutableList;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.C;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -48,10 +50,13 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, T targetInstance) {
         if( targetInstance instanceof Proxy) {
-            Class<?>[] interfaces = targetInstance.getClass().getInterfaces();
-
+            List interfacesList = new ArrayList(Arrays.stream(targetInstance.getClass().getInterfaces()).collect(Collectors.toSet()));
+            getNoDescendantInterfacesList(interfacesList, List.of(MapHolder.class));
+            if(interfacesList.size() != 1) {
+                    throw new RuntimeException("Proxy contains more than one interfaces");
+            }
+            return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) interfacesList.get(0)).withTargetInstance(targetInstance);
         }
-
         return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) targetInstance.getClass()).withTargetInstance(targetInstance);
     }
 
@@ -187,14 +192,24 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
         return internal;
     }
 
-
-//    Class<?>  urgeInterfaceses(Proxy proxy) {
-//
-//        Class<?>[] interfaces = proxy.getClass().getInterfaces();
-//
-//        // reduce interfaces
-//
-//    }
-
-
+    static void getNoDescendantInterfacesList(List<Class<?>> interfacesList, List<Class<?>> excludedInterfaces) {
+        if (interfacesList.size() >= 2) {
+            if(excludedInterfaces != null && excludedInterfaces.contains(interfacesList.get(0))) {
+                interfacesList.remove(interfacesList.get(0));
+                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
+            }
+            else if(excludedInterfaces != null && excludedInterfaces.contains(interfacesList.get(1))) {
+                interfacesList.remove(interfacesList.get(1));
+                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
+            }
+            else if(interfacesList.get(0).isAssignableFrom(interfacesList.get(1))) {
+                interfacesList.remove(interfacesList.get(0));
+                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
+            }
+            else if(interfacesList.get(1).isAssignableFrom(interfacesList.get(0))) {
+                interfacesList.remove(interfacesList.get(1));
+                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
+            }
+        }
+    }
 }

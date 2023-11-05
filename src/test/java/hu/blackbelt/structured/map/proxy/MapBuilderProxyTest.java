@@ -49,7 +49,7 @@ public class MapBuilderProxyTest {
         User user2 = MapBuilderProxy.builder(UserBuilder.class, User.class).withTargetInstance(user).newInstance().id("2").active(true).build();
 
         // elveszik a targetClass
-        //User user3 = MapBuilderProxy.builder(UserBuilder.class, user).newInstance().id("3").active(true).build();
+        User user3 = MapBuilderProxy.builder(UserBuilder.class, user).newInstance().id("3").active(true).build();
         assertEquals(Optional.of("teszt"), user2.getLoginName());
         assertEquals("2", user2.getId());
         assertEquals("teszt", ((MapHolder) user2).toMap().get("loginName"));
