@@ -23,12 +23,14 @@ package hu.blackbelt.structured.map.proxy;
 import hu.blackbelt.structured.map.proxy.entity.User;
 import hu.blackbelt.structured.map.proxy.entity.UserBuilder;
 import hu.blackbelt.structured.map.proxy.entity.UserBuilderWithPrefix;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Slf4j
 public class MapBuilderProxyTest {
 
     @Test
@@ -44,7 +46,10 @@ public class MapBuilderProxyTest {
     @Test
     public void testBuildFromExisting() {
         User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance().id("1").active(true).loginName("teszt").build();
-        User user2 = MapBuilderProxy.builder(UserBuilder.class, user).newInstance().id("2").build();
+        User user2 = MapBuilderProxy.builder(UserBuilder.class, User.class).withTargetInstance(user).newInstance().id("2").active(true).build();
+
+        // elveszik a targetClass
+        User user3 = MapBuilderProxy.builder(UserBuilder.class, user).newInstance().id("3").active(true).build();
         assertEquals(Optional.of("teszt"), user2.getLoginName());
         assertEquals("2", user2.getId());
         assertEquals("teszt", ((MapHolder) user2).toMap().get("loginName"));
@@ -64,6 +69,22 @@ public class MapBuilderProxyTest {
 
         assertEquals(Optional.empty(), user.getLoginName());
 
+    }
+
+    @Test
+    public void testBuildInstances() {
+        UserBuilder aBuilder = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance().loginName("a");
+        UserBuilder bBuilder = aBuilder.id("1");
+        UserBuilder cBuilder = aBuilder.id("2").loginName("d");
+
+
+        //UserBuilder d = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance();
+
+        User a = aBuilder.build();
+        User b = bBuilder.build();
+        User c = cBuilder.build();
+
+        a.getLoginName();
     }
 
 }
