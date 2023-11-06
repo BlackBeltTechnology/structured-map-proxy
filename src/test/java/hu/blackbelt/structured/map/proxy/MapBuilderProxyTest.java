@@ -20,15 +20,18 @@ package hu.blackbelt.structured.map.proxy;
  * #L%
  */
 
-import hu.blackbelt.structured.map.proxy.entity.User;
-import hu.blackbelt.structured.map.proxy.entity.UserBuilder;
-import hu.blackbelt.structured.map.proxy.entity.UserBuilderWithPrefix;
+import hu.blackbelt.structured.map.proxy.entity.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @Slf4j
 public class MapBuilderProxyTest {
@@ -73,18 +76,28 @@ public class MapBuilderProxyTest {
 
     @Test
     public void testBuildInstances() {
-        UserBuilder aBuilder = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance().loginName("a");
-        UserBuilder bBuilder = aBuilder.id("1");
-        UserBuilder cBuilder = aBuilder.id("2").loginName("d");
+        UserDetailBuilder detailsBuilder = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("id1").note("note1");
+        detailsBuilder.build();
 
-
-        //UserBuilder d = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance();
+        UserBuilder aBuilder = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance().loginName("a").userDetails(List.of(detailsBuilder.build()));
+        UserBuilder bBuilder = aBuilder.id("1").userDetails(List.of(detailsBuilder.id("id2").build()));
+        UserBuilder cBuilder = aBuilder.id("2").loginName("c");
 
         User a = aBuilder.build();
         User b = bBuilder.build();
         User c = cBuilder.build();
 
-        a.getLoginName();
+        assertNull(a.getId());
+        assertEquals(Optional.of("a"), a.getLoginName());
+        assertThat(a.getUserDetails(), hasItem(detailsBuilder.build()));
+
+        assertEquals("1", b.getId());
+        assertEquals(Optional.of("a"), b.getLoginName());
+        assertThat(b.getUserDetails(), hasItem(detailsBuilder.id("id2").build()));
+
+        assertEquals("2", c.getId());
+        assertEquals(Optional.of("c"), c.getLoginName());
+        assertThat(c.getUserDetails(), hasItem(detailsBuilder.build()));
     }
 
 }

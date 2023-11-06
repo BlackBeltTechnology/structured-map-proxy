@@ -49,11 +49,11 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
     }
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, T targetInstance) {
-        if( targetInstance instanceof Proxy) {
+        if (targetInstance instanceof Proxy) {
             List interfacesList = new ArrayList(Arrays.stream(targetInstance.getClass().getInterfaces()).collect(Collectors.toSet()));
-            getNoDescendantInterfacesList(interfacesList, List.of(MapHolder.class));
-            if(interfacesList.size() != 1) {
-                    throw new RuntimeException("Proxy contains more than one interfaces");
+            getNoDescendantInterfaces(interfacesList, List.of(MapHolder.class, InvocationHandler.class));
+            if (interfacesList.size() != 1) {
+                throw new RuntimeException("Proxy contains more than one interfaces");
             }
             return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) interfacesList.get(0)).withTargetInstance(targetInstance);
         }
@@ -123,7 +123,6 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
                     new Class[] { builderClass },
                     new MapBuilderProxy(targetInstance, builderMethodPrefix, params, builderClass, targetClass));
         }
-
     }
 
     private MapBuilderProxy(Object target, String builderMethodPrefix, MapProxyParams params, Class<B> builderClass, Class<T> targetClass) {
@@ -139,11 +138,12 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
         if (m.getName().startsWith("build")) {
             return internal;
         } else {
-            // TODO: Clone
+
+            // clone the internal as a map
             Map<String, Object> clonedMap = asMap(((MapHolder) internal).$internalMap());
-
+            // create new internal instance
             T newInstance = MapProxy.builder(targetClass).withMap(clonedMap).withParams(params).newInstance();
-
+            // create new Builder
             B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
 
             String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
@@ -161,9 +161,9 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
 
             return b;
         }
-        //return proxy;
     }
 
+    // Clone the proxy instance to a map
     Map<String, Object> asMap(Map<String, Object> map) {
         return map != null ? asMapRec(map) : null;
     }
@@ -174,14 +174,14 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
                 throw new IllegalArgumentException("Map contains null key(s)");
             }
         }
-        Map<String, Object>  internal = new TreeMap<>();
+        Map<String, Object> internal = new TreeMap<>();
         for (String key : new TreeSet<>(map.keySet())) {
             Object value = map.get(key);
             if (value instanceof List) {
-                internal.put(key, ((List<Map<String, Object>>) value).stream().map(
+                internal.put(key, ((List<Proxy>) value).stream().map(p ->((MapHolder) p).$internalMap()).map(
                         e -> asMap(e)).collect(Collectors.toList()));
             } else if (value instanceof Collection) {
-                internal.put(key, ((Collection<Map<String, Object>>) value).stream().map(
+                internal.put(key, ((Collection<Proxy>) value).stream().map(p ->((MapHolder) p).$internalMap()).map(
                         e -> asMap(e)).collect(Collectors.toSet()));
             } else if (value instanceof Map) {
                 internal.put(key, asMap((Map<String, Object>) value));
@@ -192,23 +192,28 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
         return internal;
     }
 
-    static void getNoDescendantInterfacesList(List<Class<?>> interfacesList, List<Class<?>> excludedInterfaces) {
+    // This method removes the interfaces that have a descendant or the excludeInterfaces contains it.
+    static void getNoDescendantInterfaces(List<Class<?>> interfacesList, List<Class<?>> excludedInterfaces) {
+        if(excludedInterfaces != null) {
+            interfacesList.removeAll(excludedInterfaces);
+        }
+        getNoDescendantInterfacesRec(interfacesList);
+    }
+
+    static void getNoDescendantInterfacesRec(List<Class<?>> interfacesList) {
         if (interfacesList.size() >= 2) {
-            if(excludedInterfaces != null && excludedInterfaces.contains(interfacesList.get(0))) {
-                interfacesList.remove(interfacesList.get(0));
-                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
+            Class<?> aClass = interfacesList.get(0);
+            Set<Class<?>> removeSet = new HashSet<>();
+            for (Class<?> inter : interfacesList) {
+                if (!aClass.equals(inter) && aClass.isAssignableFrom(inter)) {
+                    removeSet.add(aClass);
+                } else if (!aClass.equals(inter) && inter.isAssignableFrom(aClass)) {
+                    removeSet.add(inter);
+                }
             }
-            else if(excludedInterfaces != null && excludedInterfaces.contains(interfacesList.get(1))) {
-                interfacesList.remove(interfacesList.get(1));
-                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
-            }
-            else if(interfacesList.get(0).isAssignableFrom(interfacesList.get(1))) {
-                interfacesList.remove(interfacesList.get(0));
-                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
-            }
-            else if(interfacesList.get(1).isAssignableFrom(interfacesList.get(0))) {
-                interfacesList.remove(interfacesList.get(1));
-                getNoDescendantInterfacesList(interfacesList,excludedInterfaces);
+            if (!removeSet.isEmpty()) {
+                interfacesList.removeAll(removeSet);
+                getNoDescendantInterfacesRec(interfacesList);
             }
         }
     }
