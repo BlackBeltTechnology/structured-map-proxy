@@ -22,24 +22,41 @@ package hu.blackbelt.structured.map.proxy;
 
 import com.google.common.collect.ImmutableList;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.C;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Map;
+import java.lang.reflect.Proxy;
+import java.util.*;
+import java.util.stream.Collectors;
 
-public final class MapBuilderProxy implements InvocationHandler {
+@Slf4j
+public final class MapBuilderProxy<B, T> implements InvocationHandler {
+
+    MapProxyParams params;
 
     Object internal;
     String prefix;
 
-    MapProxyParams params;
+    Class<B> builderClass;
+
+    Class<T> targetClass;
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, Class<T> targetClass) {
         return new MapBuilderProxy.Builder<>(builderClass, targetClass);
     }
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, T targetInstance) {
+        if (targetInstance instanceof Proxy) {
+            List interfacesList = new ArrayList(Arrays.stream(targetInstance.getClass().getInterfaces()).collect(Collectors.toSet()));
+            getNoDescendantInterfaces(interfacesList, List.of(MapHolder.class, InvocationHandler.class));
+            if (interfacesList.size() != 1) {
+                throw new RuntimeException("Proxy contains more than one interfaces");
+            }
+            return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) interfacesList.get(0)).withTargetInstance(targetInstance);
+        }
         return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) targetInstance.getClass()).withTargetInstance(targetInstance);
     }
 
@@ -100,37 +117,104 @@ public final class MapBuilderProxy implements InvocationHandler {
                         .withParams(params)
                         .newInstance();
             }
+
             return (B) java.lang.reflect.Proxy.newProxyInstance(
                     builderClass.getClassLoader(),
                     new Class[] { builderClass },
-                    new MapBuilderProxy(targetInstance, builderMethodPrefix));
+                    new MapBuilderProxy(targetInstance, builderMethodPrefix, params, builderClass, targetClass));
         }
-
     }
 
-    private MapBuilderProxy(Object target, String builderMethodPrefix) {
+    private MapBuilderProxy(Object target, String builderMethodPrefix, MapProxyParams params, Class<B> builderClass, Class<T> targetClass) {
         this.internal = target;
         this.prefix = builderMethodPrefix;
+        this.params = params;
+        this.builderClass = builderClass;
+        this.targetClass = targetClass;
     }
 
     public Object invoke(Object proxy, Method m, Object[] args)
-            throws Throwable {
+    throws Throwable {
         if (m.getName().startsWith("build")) {
             return internal;
         } else {
+
+            // clone the internal as a map
+            Map<String, Object> clonedMap = asMap(((MapHolder) internal).$internalMap());
+            // create new internal instance
+            T newInstance = MapProxy.builder(targetClass).withMap(clonedMap).withParams(params).newInstance();
+            // create new Builder
+            B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
+
             String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
             if (prefix != null && !prefix.equals("")) {
                 attrName = Character.toUpperCase(m.getName().charAt(prefix.length())) + m.getName().substring(prefix.length() + 1);
             }
-            Method setterMethod = ReflectionUtil.findSetter(internal.getClass(), attrName);
+            Method setterMethod = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
             Object[] value = null;
             if (args[0] instanceof Object[]) {
                 value = new Object[]{ImmutableList.copyOf((Object[]) args[0])};
             } else {
                 value = new Object[]{args[0]};
             }
-            setterMethod.invoke(internal, value);
+            setterMethod.invoke(newInstance, value);
+
+            return b;
         }
-        return proxy;
+    }
+
+    // Clone the proxy instance to a map
+    Map<String, Object> asMap(Map<String, Object> map) {
+        return map != null ? asMapRec(map) : null;
+    }
+
+    Map<String, Object> asMapRec(Map<String, Object> map) {
+        for (String key : map.keySet()) {
+            if (key == null) {
+                throw new IllegalArgumentException("Map contains null key(s)");
+            }
+        }
+        Map<String, Object> internal = new TreeMap<>();
+        for (String key : new TreeSet<>(map.keySet())) {
+            Object value = map.get(key);
+            if (value instanceof List) {
+                internal.put(key, ((List<Proxy>) value).stream().map(p ->((MapHolder) p).$internalMap()).map(
+                        e -> asMap(e)).collect(Collectors.toList()));
+            } else if (value instanceof Collection) {
+                internal.put(key, ((Collection<Proxy>) value).stream().map(p ->((MapHolder) p).$internalMap()).map(
+                        e -> asMap(e)).collect(Collectors.toSet()));
+            } else if (value instanceof Map) {
+                internal.put(key, asMap((Map<String, Object>) value));
+            } else {
+                internal.put(key, value);
+            }
+        }
+        return internal;
+    }
+
+    // This method removes the interfaces that have a descendant or the excludeInterfaces contains it.
+    static void getNoDescendantInterfaces(List<Class<?>> interfacesList, List<Class<?>> excludedInterfaces) {
+        if(excludedInterfaces != null) {
+            interfacesList.removeAll(excludedInterfaces);
+        }
+        getNoDescendantInterfacesRec(interfacesList);
+    }
+
+    static void getNoDescendantInterfacesRec(List<Class<?>> interfacesList) {
+        if (interfacesList.size() >= 2) {
+            Class<?> aClass = interfacesList.get(0);
+            Set<Class<?>> removeSet = new HashSet<>();
+            for (Class<?> inter : interfacesList) {
+                if (!aClass.equals(inter) && aClass.isAssignableFrom(inter)) {
+                    removeSet.add(aClass);
+                } else if (!aClass.equals(inter) && inter.isAssignableFrom(aClass)) {
+                    removeSet.add(inter);
+                }
+            }
+            if (!removeSet.isEmpty()) {
+                interfacesList.removeAll(removeSet);
+                getNoDescendantInterfacesRec(interfacesList);
+            }
+        }
     }
 }
