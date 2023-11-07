@@ -25,21 +25,38 @@ import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Map;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public final class MapBuilderProxy implements InvocationHandler {
+import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getNoDescendantInterfaces;
+
+public final class MapBuilderProxy<B, T> implements InvocationHandler {
+
+    MapProxyParams params;
 
     Object internal;
     String prefix;
 
-    MapProxyParams params;
+    Class<B> builderClass;
+
+    Class<T> targetClass;
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, Class<T> targetClass) {
         return new MapBuilderProxy.Builder<>(builderClass, targetClass);
     }
 
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, T targetInstance) {
+        if (targetInstance instanceof Proxy) {
+            List interfacesList = new ArrayList(Arrays.stream(targetInstance.getClass().getInterfaces()).collect(Collectors.toSet()));
+            getNoDescendantInterfaces(interfacesList, List.of(MapHolder.class, InvocationHandler.class));
+            if (interfacesList.size() != 1) {
+                throw new RuntimeException("Proxy contains more than one interfaces");
+            }
+            return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) interfacesList.get(0)).withTargetInstance(targetInstance);
+        }
         return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) targetInstance.getClass()).withTargetInstance(targetInstance);
     }
 
@@ -100,37 +117,45 @@ public final class MapBuilderProxy implements InvocationHandler {
                         .withParams(params)
                         .newInstance();
             }
+
             return (B) java.lang.reflect.Proxy.newProxyInstance(
                     builderClass.getClassLoader(),
                     new Class[] { builderClass },
-                    new MapBuilderProxy(targetInstance, builderMethodPrefix));
+                    new MapBuilderProxy(targetInstance, builderMethodPrefix, params, builderClass, targetClass));
         }
-
     }
 
-    private MapBuilderProxy(Object target, String builderMethodPrefix) {
+    private MapBuilderProxy(Object target, String builderMethodPrefix, MapProxyParams params, Class<B> builderClass, Class<T> targetClass) {
         this.internal = target;
         this.prefix = builderMethodPrefix;
+        this.params = params;
+        this.builderClass = builderClass;
+        this.targetClass = targetClass;
     }
 
     public Object invoke(Object proxy, Method m, Object[] args)
-            throws Throwable {
+    throws Throwable {
         if (m.getName().startsWith("build")) {
             return internal;
         } else {
+            T newInstance = MapProxy.builder(targetClass).withMap(((MapHolder) internal).$internalMap()).withParams(params).newInstance();
+
+            B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
+
             String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
             if (prefix != null && !prefix.equals("")) {
                 attrName = Character.toUpperCase(m.getName().charAt(prefix.length())) + m.getName().substring(prefix.length() + 1);
             }
-            Method setterMethod = ReflectionUtil.findSetter(internal.getClass(), attrName);
+            Method setterMethod = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
             Object[] value = null;
             if (args[0] instanceof Object[]) {
                 value = new Object[]{ImmutableList.copyOf((Object[]) args[0])};
             } else {
                 value = new Object[]{args[0]};
             }
-            setterMethod.invoke(internal, value);
+            setterMethod.invoke(newInstance, value);
+
+            return b;
         }
-        return proxy;
     }
 }
