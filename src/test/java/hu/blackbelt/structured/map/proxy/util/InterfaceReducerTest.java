@@ -1,4 +1,4 @@
-package hu.blackbelt.structured.map.proxy;
+package hu.blackbelt.structured.map.proxy.util;
 
 /*-
  * #%L
@@ -26,7 +26,8 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static hu.blackbelt.structured.map.proxy.MapBuilderProxy.getNoDescendantInterfaces;
+
+import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getNoDescendantInterfaces;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

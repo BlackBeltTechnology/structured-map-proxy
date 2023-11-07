@@ -23,14 +23,18 @@ package hu.blackbelt.structured.map.proxy;
 import com.google.common.collect.ImmutableList;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.units.qual.C;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+
+import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getNoDescendantInterfaces;
 
 @Slf4j
 public final class MapBuilderProxy<B, T> implements InvocationHandler {
@@ -138,12 +142,8 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
         if (m.getName().startsWith("build")) {
             return internal;
         } else {
+            T newInstance = MapProxy.builder(targetClass).withMap(((MapHolder) internal).$internalMap()).withParams(params).newInstance();
 
-            // clone the internal as a map
-            Map<String, Object> clonedMap = asMap(((MapHolder) internal).$internalMap());
-            // create new internal instance
-            T newInstance = MapProxy.builder(targetClass).withMap(clonedMap).withParams(params).newInstance();
-            // create new Builder
             B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
 
             String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
@@ -160,61 +160,6 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
             setterMethod.invoke(newInstance, value);
 
             return b;
-        }
-    }
-
-    // Clone the proxy instance to a map
-    Map<String, Object> asMap(Map<String, Object> map) {
-        return map != null ? asMapRec(map) : null;
-    }
-
-    Map<String, Object> asMapRec(Map<String, Object> map) {
-        for (String key : map.keySet()) {
-            if (key == null) {
-                throw new IllegalArgumentException("Map contains null key(s)");
-            }
-        }
-        Map<String, Object> internal = new TreeMap<>();
-        for (String key : new TreeSet<>(map.keySet())) {
-            Object value = map.get(key);
-            if (value instanceof List) {
-                internal.put(key, ((List<Proxy>) value).stream().map(p ->((MapHolder) p).$internalMap()).map(
-                        e -> asMap(e)).collect(Collectors.toList()));
-            } else if (value instanceof Collection) {
-                internal.put(key, ((Collection<Proxy>) value).stream().map(p ->((MapHolder) p).$internalMap()).map(
-                        e -> asMap(e)).collect(Collectors.toSet()));
-            } else if (value instanceof Map) {
-                internal.put(key, asMap((Map<String, Object>) value));
-            } else {
-                internal.put(key, value);
-            }
-        }
-        return internal;
-    }
-
-    // This method removes the interfaces that have a descendant or the excludeInterfaces contains it.
-    static void getNoDescendantInterfaces(List<Class<?>> interfacesList, List<Class<?>> excludedInterfaces) {
-        if(excludedInterfaces != null) {
-            interfacesList.removeAll(excludedInterfaces);
-        }
-        getNoDescendantInterfacesRec(interfacesList);
-    }
-
-    static void getNoDescendantInterfacesRec(List<Class<?>> interfacesList) {
-        if (interfacesList.size() >= 2) {
-            Class<?> aClass = interfacesList.get(0);
-            Set<Class<?>> removeSet = new HashSet<>();
-            for (Class<?> inter : interfacesList) {
-                if (!aClass.equals(inter) && aClass.isAssignableFrom(inter)) {
-                    removeSet.add(aClass);
-                } else if (!aClass.equals(inter) && inter.isAssignableFrom(aClass)) {
-                    removeSet.add(inter);
-                }
-            }
-            if (!removeSet.isEmpty()) {
-                interfacesList.removeAll(removeSet);
-                getNoDescendantInterfacesRec(interfacesList);
-            }
         }
     }
 }
