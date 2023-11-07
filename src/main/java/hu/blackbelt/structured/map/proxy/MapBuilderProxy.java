@@ -22,7 +22,6 @@ package hu.blackbelt.structured.map.proxy;
 
 import com.google.common.collect.ImmutableList;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
-import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -30,13 +29,10 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
-
 
 import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getNoDescendantInterfaces;
 
-@Slf4j
 public final class MapBuilderProxy<B, T> implements InvocationHandler {
 
     MapProxyParams params;
