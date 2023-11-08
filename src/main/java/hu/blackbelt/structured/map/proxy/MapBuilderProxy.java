@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getNoDescendantInterfaces;
+import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getInterfacesWithNoDescendants;
 
 public final class MapBuilderProxy<B, T> implements InvocationHandler {
 
@@ -51,11 +51,11 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
     public static <B, T> Builder<B, T> builder(Class<B> builderClass, T targetInstance) {
         if (targetInstance instanceof Proxy) {
             List interfacesList = new ArrayList(Arrays.stream(targetInstance.getClass().getInterfaces()).collect(Collectors.toSet()));
-            getNoDescendantInterfaces(interfacesList, List.of(MapHolder.class, InvocationHandler.class));
-            if (interfacesList.size() != 1) {
+            List<Class<?>> interfacesWithNoDescendants = getInterfacesWithNoDescendants(interfacesList, List.of(MapHolder.class, InvocationHandler.class));
+            if (interfacesWithNoDescendants.size() != 1) {
                 throw new RuntimeException("Proxy contains more than one interfaces");
             }
-            return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) interfacesList.get(0)).withTargetInstance(targetInstance);
+            return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) interfacesWithNoDescendants.get(0)).withTargetInstance(targetInstance);
         }
         return new MapBuilderProxy.Builder<B, T>(builderClass, (Class<T>) targetInstance.getClass()).withTargetInstance(targetInstance);
     }
@@ -136,7 +136,7 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
     public Object invoke(Object proxy, Method m, Object[] args)
     throws Throwable {
         if (m.getName().startsWith("build")) {
-            return internal;
+            return MapProxy.builder(targetClass).withMap(((MapHolder) internal).$internalMap()).withParams(params).newInstance();
         } else {
             T newInstance = MapProxy.builder(targetClass).withMap(((MapHolder) internal).$internalMap()).withParams(params).newInstance();
 

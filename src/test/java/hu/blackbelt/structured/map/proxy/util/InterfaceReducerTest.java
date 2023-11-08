@@ -26,8 +26,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-
-import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getNoDescendantInterfaces;
+import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getInterfacesWithNoDescendants;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -64,25 +63,25 @@ public class InterfaceReducerTest {
 
         //Diamond
         List<Class<?>> diamondList = new ArrayList<>(List.of(C.class, B.class, D.class, A.class));
-        getNoDescendantInterfaces(diamondList, null);
+        List<Class<?>> interfacesWithNoDescendants = getInterfacesWithNoDescendants(diamondList, null);
 
-        assertEquals(1, diamondList.size());
-        assertEquals(D.class, diamondList.get(0));
+        assertEquals(1, interfacesWithNoDescendants.size());
+        assertEquals(D.class, interfacesWithNoDescendants.get(0));
 
         // Multi Interfaces
         List<Class<?>> multiList = new ArrayList<>(List.of(F.class, B.class, E.class, A.class));
-        getNoDescendantInterfaces(multiList, null);
-        assertEquals(1, multiList.size());
-        assertEquals(F.class, multiList.get(0));
+        interfacesWithNoDescendants = getInterfacesWithNoDescendants(multiList, null);
+        assertEquals(1, interfacesWithNoDescendants.size());
+        assertEquals(F.class, interfacesWithNoDescendants.get(0));
 
         List<Class<?>> interfacesWithNoRelation = new ArrayList<>(List.of(A.class, F.class, B.class, E.class, H.class, G.class));
-        getNoDescendantInterfaces(interfacesWithNoRelation, null);
-        assertTrue(1 < interfacesWithNoRelation.size());
+        interfacesWithNoDescendants = getInterfacesWithNoDescendants(interfacesWithNoRelation, null);
+        assertTrue(1 < interfacesWithNoDescendants.size());
 
         List<Class<?>> interfacesWithExclude = new ArrayList<>(List.of(F.class, B.class, E.class, A.class, G.class));
-        getNoDescendantInterfaces(interfacesWithExclude, List.of(G.class));
-        assertEquals(1, interfacesWithExclude.size());
-        assertEquals(F.class, multiList.get(0));
+        interfacesWithNoDescendants = getInterfacesWithNoDescendants(interfacesWithExclude, List.of(G.class));
+        assertEquals(1, interfacesWithNoDescendants.size());
+        assertEquals(F.class, interfacesWithNoDescendants.get(0));
 
     }
 }

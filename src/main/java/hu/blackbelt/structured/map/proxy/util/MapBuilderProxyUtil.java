@@ -10,28 +10,25 @@ public final class MapBuilderProxyUtil {
 
 
     // This method removes the interfaces that have a descendant or the excludeInterfaces contains it.
-    public static void getNoDescendantInterfaces(List<Class<?>> interfacesList, List<Class<?>> excludedInterfaces) {
-        if(excludedInterfaces != null) {
-            interfacesList.removeAll(excludedInterfaces);
+    public static List<Class<?>> getInterfacesWithNoDescendants(List<Class<?>> clazzInterfaces, List<Class<?>> excludedInterfaces) {
+        List<Class<?>> interfacesWithNoDescendants = new ArrayList<>();
+        for (Class<?> inter : clazzInterfaces) {
+            if (!hasDescendants(inter, clazzInterfaces)) {
+                interfacesWithNoDescendants.add(inter);
+            }
         }
-        getNoDescendantInterfacesRec(interfacesList);
+        if(excludedInterfaces != null) {
+            interfacesWithNoDescendants.removeAll(excludedInterfaces);
+        }
+        return interfacesWithNoDescendants;
     }
 
-    private static void getNoDescendantInterfacesRec(List<Class<?>> interfacesList) {
-        if (interfacesList.size() >= 2) {
-            Class<?> aClass = interfacesList.get(0);
-            Set<Class<?>> removeSet = new HashSet<>();
-            for (Class<?> inter : interfacesList) {
-                if (!aClass.equals(inter) && aClass.isAssignableFrom(inter)) {
-                    removeSet.add(aClass);
-                } else if (!aClass.equals(inter) && inter.isAssignableFrom(aClass)) {
-                    removeSet.add(inter);
-                }
-            }
-            if (!removeSet.isEmpty()) {
-                interfacesList.removeAll(removeSet);
-                getNoDescendantInterfacesRec(interfacesList);
+    private static boolean hasDescendants(Class<?> inter, List<Class<?>> clazzInterfaces) {
+        for (Class<?> interOther : clazzInterfaces) {
+            if (!inter.equals(interOther) && inter.isAssignableFrom(interOther)) {
+                return true;
             }
         }
+        return false;
     }
 }
