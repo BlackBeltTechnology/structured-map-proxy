@@ -22,7 +22,6 @@ package hu.blackbelt.structured.map.proxy;
 
 import com.google.common.collect.ImmutableMap;
 import hu.blackbelt.structured.map.proxy.entity.*;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -30,11 +29,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Slf4j
 public class MapBuilderProxyTest {
 
     @Test

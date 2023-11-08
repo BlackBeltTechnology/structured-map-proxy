@@ -334,6 +334,7 @@ public class MapProxyTest {
         assertEquals(3, getMapHolderValue(user, "birthCountry", Country.class));
 
     }
+
     @Test
     public void testBuildFromMapWithSingleMapChild() {
         Map<String, Object> prepared = new HashMap<>();
