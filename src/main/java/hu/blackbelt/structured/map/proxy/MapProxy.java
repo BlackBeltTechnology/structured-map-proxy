@@ -735,41 +735,50 @@ public final class MapProxy implements InvocationHandler {
             List<Object> valuesArray = (values instanceof Collection<?>)
                     ? new ArrayList<>((Collection) values)
                     : new ArrayList<>();
+            
+            if (add) {
+                valuesArray.add(args[0]);
+            } else {
+                valuesArray.remove(args[0]);
+            }
 
-            if (args[0] instanceof Object[]) {
-                Object[] valuesForAdd = (Object[]) args[0];
-                for (Object value : valuesForAdd) {
-                    if (attributeInfo.isComposite() && value instanceof MapHolder) {
-                        if (attributeInfo.getPropertyType().isInterface()) {
-                            MapHolder proxy = (MapHolder) MapProxy.builder(attributeInfo.getPropertyType())
-                                    .withParams(params)
-                                    .withMap(((MapHolder) value).toMap())
-                                    .newInstance();
-                            proxy.toMap().entrySet().forEach(e -> {
-                                if (add) {
-                                    internal.put(e.getKey(), e.getValue());
-                                } else {
-                                    internal.remove(e.getKey(), e.getValue());
-                                }
+            if (args.length > 1) {
+                if (args[1] instanceof Object[]) {
+                    Object[] valuesForAdd = (Object[]) args[1];
+                    for (Object value : valuesForAdd) {
+                        if (attributeInfo.isComposite() && value instanceof MapHolder) {
+                            if (attributeInfo.getPropertyType().isInterface()) {
+                                MapHolder proxy = (MapHolder) MapProxy.builder(attributeInfo.getPropertyType())
+                                        .withParams(params)
+                                        .withMap(((MapHolder) value).toMap())
+                                        .newInstance();
+                                proxy.toMap().entrySet().forEach(e -> {
+                                    if (add) {
+                                        internal.put(e.getKey(), e.getValue());
+                                    } else {
+                                        internal.remove(e.getKey(), e.getValue());
+                                    }
 
-                            });
+                                });
+                            } else {
+                                throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
+                            }
                         } else {
-                            throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
-                        }
-                    } else {
-                        if (add) {
-                            valuesArray.add(value);
-                        } else {
-                            valuesArray.remove(value);
+                            if (add) {
+                                valuesArray.add(value);
+                            } else {
+                                valuesArray.remove(value);
+                            }
                         }
                     }
-                }
-            } else {
-                if (add) {
-                    valuesArray.add(args[0]);
                 } else {
-                    valuesArray.remove(args[0]);
+                    if (add) {
+                        valuesArray.add(args[1]);
+                    } else {
+                        valuesArray.remove(args[1]);
+                    }
                 }
+
             }
             internal.put(getKeyName(clazz, attrName), Collections.unmodifiableList(valuesArray));
         }

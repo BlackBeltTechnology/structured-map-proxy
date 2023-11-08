@@ -55,9 +55,9 @@ public interface User extends Entity {
     Collection<UserDetail> getUserDetails();
     void setUserDetails(Collection<UserDetail> userDetails);
 
-    void addToUserDetails(UserDetail... userDetails);
+    void addToUserDetails(UserDetail first, UserDetail... userDetails);
 
-    void removeFromUserDetails(UserDetail... userDetails);
+    void removeFromUserDetails(UserDetail first, UserDetail... userDetails);
 
     Collection getCollectionWithoutType();
     void setCollectionWithoutType(Collection collectionWithoutType);
