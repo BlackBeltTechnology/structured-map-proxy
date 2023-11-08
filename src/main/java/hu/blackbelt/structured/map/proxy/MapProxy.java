@@ -733,7 +733,7 @@ public final class MapProxy implements InvocationHandler {
             Object values = internal.get(getKeyName(clazz, attrName));
 
             List<Object> valuesArray = (values instanceof Collection<?>)
-                    ? valuesArray = new ArrayList<>((Collection) values)
+                    ? new ArrayList<>((Collection) values)
                     : new ArrayList<>();
 
             if (args[0] instanceof Object[]) {
