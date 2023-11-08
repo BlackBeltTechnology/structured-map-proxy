@@ -383,6 +383,62 @@ public class MapProxyTest {
     }
 
     @Test
+    public void testAddAndRemove() {
+        Map<String, Object> prepared = getSimpleProxyMap();
+
+        user = MapProxy.builder(User.class).withEnumMappingMethod("getOrdinal").newInstance();
+        user.setUserDetails(List.of(userDetail1, userDetail2));
+
+        assertEquals(2, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note2")).count());
+
+        user.addToUserDetails(userDetail3);
+        user.addToUserDetails(userDetail4, userDetail5);
+
+        assertEquals(5, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note3")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note4")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note5")).count());
+
+        user.removeFromUserDetails(userDetail3, userDetail4);
+        user.removeFromUserDetails(userDetail1);
+
+        assertEquals(2, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getNote().equals("Note5")).count());
+
+        user.addToUserDetails(null, userDetail1);
+
+        assertEquals(4, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note5")).count());
+
+        user.addToUserDetails(userDetail1, userDetail1);
+
+        assertEquals(6, user.getUserDetails().size());
+        assertEquals(3, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note5")).count());
+
+        user.removeFromUserDetails(userDetail1, userDetail1);
+
+        assertEquals(4, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note5")).count());
+
+        user.removeFromUserDetails(userDetail2, userDetail2);
+
+        assertEquals(3, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail != null && userDetail.getNote().equals("Note5")).count());
+    }
+
+    @Test
     public void testToString() {
         Map<String, Object> prepared = getSimpleProxyMap();
 

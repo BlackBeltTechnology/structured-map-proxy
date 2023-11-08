@@ -54,6 +54,8 @@ public final class MapProxy implements InvocationHandler {
 
     public static final String METHOD_SET = "set";
     public static final String METHOD_GET = "get";
+    public static final String METHOD_ADD = "addTo";
+    public static final String METHOD_REMOVE = "removeFrom";
     public static final String METHOD_IS = "is";
     public static final String METHOD_TO_MAP = "toMap";
     public static final String METHOD_GET_ORIGINAL_MAP = "$originalMap";
@@ -706,6 +708,73 @@ public final class MapProxy implements InvocationHandler {
         return false;
     }
 
+    public void invokeAddOrRemove(Method m, Object[] args, boolean add) throws ExecutionException {
+        String attrName = null;
+        if (add) {
+            if (params.isImmutable()) {
+                throw new IllegalStateException("Could not call add on immutable object");
+            }
+
+            attrName = Character.toLowerCase(m.getName().charAt(5)) + m.getName().substring(6);
+        } else {
+            if (params.isImmutable()) {
+                throw new IllegalStateException("Could not call remove on immutable object");
+            }
+
+            attrName = Character.toLowerCase(m.getName().charAt(10)) + m.getName().substring(11);
+        }
+
+        AttributeInfo attributeInfo = null;
+        if (attrName != null) {
+            attributeInfo = typeInfoCache.get(clazz).get(attrName);
+        }
+
+        if (attributeInfo != null && Collection.class.isAssignableFrom(attributeInfo.getPropertyType())) {
+            Object values = internal.get(getKeyName(clazz, attrName));
+
+            List<Object> valuesArray = (values instanceof Collection<?>)
+                    ? new ArrayList<>((Collection) values)
+                    : new ArrayList<>();
+
+            if (args[0] instanceof Object[]) {
+                Object[] valuesForAdd = (Object[]) args[0];
+                for (Object value : valuesForAdd) {
+                    if (attributeInfo.isComposite() && value instanceof MapHolder) {
+                        if (attributeInfo.getPropertyType().isInterface()) {
+                            MapHolder proxy = (MapHolder) MapProxy.builder(attributeInfo.getPropertyType())
+                                    .withParams(params)
+                                    .withMap(((MapHolder) value).toMap())
+                                    .newInstance();
+                            proxy.toMap().entrySet().forEach(e -> {
+                                if (add) {
+                                    internal.put(e.getKey(), e.getValue());
+                                } else {
+                                    internal.remove(e.getKey(), e.getValue());
+                                }
+
+                            });
+                        } else {
+                            throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
+                        }
+                    } else {
+                        if (add) {
+                            valuesArray.add(value);
+                        } else {
+                            valuesArray.remove(value);
+                        }
+                    }
+                }
+            } else {
+                if (add) {
+                    valuesArray.add(args[0]);
+                } else {
+                    valuesArray.remove(args[0]);
+                }
+            }
+            internal.put(getKeyName(clazz, attrName), Collections.unmodifiableList(valuesArray));
+        }
+    }
+
     private void invokeSet(Method m, Object[] args) throws ExecutionException {
         if (params.isImmutable()) {
             throw new IllegalStateException("Could not call set on immutable object");
@@ -725,7 +794,7 @@ public final class MapProxy implements InvocationHandler {
                     internal.put(e.getKey(), e.getValue());
                 });
             } else {
-                throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+                throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
             }
         } else {
             internal.put(getKeyName(clazz, attrName), value);
@@ -792,7 +861,7 @@ public final class MapProxy implements InvocationHandler {
                         .newInstance();
                 return proxy;
             } else {
-                throw new IllegalArgumentException(String.format("The attribute %s in %s is not interface. The @Embedded attributes type have to be interface.", attrName, clazz.getName()));
+                throw new IllegalArgumentException(String.format("The attribute %s in %s is not an interface. The @Embedded attributes type has to be interface.", attrName, clazz.getName()));
             }
         } else {
             Object value = internal.get(getKeyName(clazz, attrName));
@@ -875,6 +944,10 @@ public final class MapProxy implements InvocationHandler {
             return invokeEquals(proxy, args);
         } else if (!METHOD_SET.equals(m.getName()) && m.getName().startsWith(METHOD_SET)) {
             invokeSet(m, args);
+        } else if (!METHOD_ADD.equals(m.getName()) && m.getName().startsWith(METHOD_ADD)) {
+            invokeAddOrRemove(m, args, true);
+        } else if (!METHOD_REMOVE.equals(m.getName()) && m.getName().startsWith(METHOD_REMOVE)) {
+            invokeAddOrRemove(m, args, false);
         } else if (METHOD_GET_ORIGINAL_MAP.equals(m.getName())) {
             return original;
         } else if (METHOD_GET_INTERNAL_MAP.equals(m.getName())) {
