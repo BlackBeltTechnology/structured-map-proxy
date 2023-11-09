@@ -17,7 +17,7 @@ public final class MapBuilderProxyUtil {
                 interfacesWithNoDescendants.add(inter);
             }
         }
-        if(excludedInterfaces != null) {
+        if (excludedInterfaces != null) {
             interfacesWithNoDescendants.removeAll(excludedInterfaces);
         }
         return interfacesWithNoDescendants;
