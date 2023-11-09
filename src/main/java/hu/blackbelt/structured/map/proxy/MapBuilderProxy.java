@@ -143,9 +143,12 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
             B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
 
             String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
-            if (prefix != null && !prefix.equals("")) {
+            if (prefix != null && !prefix.equals("") && attrName.startsWith(prefix)) {
                 attrName = Character.toUpperCase(m.getName().charAt(prefix.length())) + m.getName().substring(prefix.length() + 1);
+            } else if (!"addTo".equals(m.getName()) && m.getName().startsWith("addTo")) {
+
             }
+
             Method setterMethod = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
             Object[] value = null;
             if (args[0] instanceof Object[]) {
