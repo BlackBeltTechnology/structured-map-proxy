@@ -384,8 +384,6 @@ public class MapProxyTest {
 
     @Test
     public void testAddAndRemove() {
-        Map<String, Object> prepared = getSimpleProxyMap();
-
         user = MapProxy.builder(User.class).withEnumMappingMethod("getOrdinal").newInstance();
         user.setUserDetails(List.of(userDetail1, userDetail2));
 
