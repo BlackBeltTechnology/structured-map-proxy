@@ -134,7 +134,7 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
     }
 
     public Object invoke(Object proxy, Method m, Object[] args)
-            throws Throwable {
+    throws Throwable {
         if (m.getName().startsWith("build")) {
             return MapProxy.builder(targetClass).withMap(((MapHolder) internal).$internalMap()).withParams(params).newInstance();
         } else {
