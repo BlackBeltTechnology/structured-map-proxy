@@ -145,10 +145,10 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
             String attrName = m.getName();
             String methodPrefix = "";
             if (prefix != null && !prefix.equals("") && attrName.startsWith(prefix)) {
-                attrName = Character.toUpperCase(m.getName().charAt(prefix.length())) + m.getName().substring(prefix.length() + 1);
+                attrName = Character.toUpperCase(attrName.charAt(prefix.length())) + attrName.substring(prefix.length() + 1);
                 methodPrefix = prefix;
-            }  else if (!MapProxy.METHOD_ADD.equals(m.getName()) && m.getName().startsWith(MapProxy.METHOD_ADD)) {
-                attrName = Character.toUpperCase(m.getName().charAt(MapProxy.METHOD_ADD.length())) + m.getName().substring(MapProxy.METHOD_ADD.length() + 1);
+            }  else if (!MapProxy.METHOD_ADD.equals(attrName) && attrName.startsWith(MapProxy.METHOD_ADD)) {
+                attrName = Character.toUpperCase(attrName.charAt(MapProxy.METHOD_ADD.length())) + attrName.substring(MapProxy.METHOD_ADD.length() + 1);
                 methodPrefix = MapProxy.METHOD_ADD;
             }
             Method method = null;
