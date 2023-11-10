@@ -134,7 +134,7 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
     }
 
     public Object invoke(Object proxy, Method m, Object[] args)
-    throws Throwable {
+            throws Throwable {
         if (m.getName().startsWith("build")) {
             return MapProxy.builder(targetClass).withMap(((MapHolder) internal).$internalMap()).withParams(params).newInstance();
         } else {
@@ -142,21 +142,24 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
 
             B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
 
-            String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
+            String attrName = m.getName();
+            String methodPrefix = "";
             if (prefix != null && !prefix.equals("") && attrName.startsWith(prefix)) {
                 attrName = Character.toUpperCase(m.getName().charAt(prefix.length())) + m.getName().substring(prefix.length() + 1);
-            } else if (!"addTo".equals(m.getName()) && m.getName().startsWith("addTo")) {
-
+                methodPrefix = prefix;
+            }  else if (!MapProxy.METHOD_ADD.equals(m.getName()) && m.getName().startsWith(MapProxy.METHOD_ADD)) {
+                attrName = Character.toUpperCase(m.getName().charAt(MapProxy.METHOD_ADD.length())) + m.getName().substring(MapProxy.METHOD_ADD.length() + 1);
+                methodPrefix = MapProxy.METHOD_ADD;
             }
+            Method method = null;
 
-            Method setterMethod = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
-            Object[] value = null;
-            if (args[0] instanceof Object[]) {
-                value = new Object[]{ImmutableList.copyOf((Object[]) args[0])};
+            if (methodPrefix.equals(MapProxy.METHOD_ADD)) {
+                method = ReflectionUtil.findAdder(newInstance.getClass(), attrName);
             } else {
-                value = new Object[]{args[0]};
+                method = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
             }
-            setterMethod.invoke(newInstance, value);
+
+            method.invoke(newInstance, args);
 
             return b;
         }
