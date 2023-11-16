@@ -36,6 +36,7 @@ public final class ReflectionUtil {
 
     private static final String GET_PREFIX = "get";
     private static final String SET_PREFIX = "set";
+    private static final String ADD_PREFIX = "addTo";
 
     private ReflectionUtil() {
     }
@@ -46,6 +47,10 @@ public final class ReflectionUtil {
 
     public static Method findSetter(Class<?> cl, String name) {
         return findMethodByName(cl, SET_PREFIX + LOWER_CAMEL.to(UPPER_CAMEL, name));
+    }
+
+    public static Method findAdder(Class<?> cl, String name) {
+        return findMethodByName(cl, ADD_PREFIX + LOWER_CAMEL.to(UPPER_CAMEL, name));
     }
 
     public static Method findMethodByName(Class<?> cl, String name) {

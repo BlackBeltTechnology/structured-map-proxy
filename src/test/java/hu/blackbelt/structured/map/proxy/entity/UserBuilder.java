@@ -46,6 +46,7 @@ public interface UserBuilder {
     UserBuilder emptyConfigs();
     UserBuilder userInfoId(Serializable id);
     UserBuilder userDetails(Collection<UserDetail> userDetails);
+    UserBuilder addToUserDetails(UserDetail first, UserDetail... rest);
     UserBuilder singleUserDetail(UserDetail userDetail);
     UserBuilder collectionWithoutType(Collection collectionWithoutType);
     UserBuilder collectionWithMapType(Collection<Map<String, Object>> collectionWithMapType);
