@@ -142,18 +142,24 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
 
             B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
 
-            String attrName = Character.toUpperCase(m.getName().charAt(0)) + m.getName().substring(1);
-            if (prefix != null && !prefix.equals("")) {
-                attrName = Character.toUpperCase(m.getName().charAt(prefix.length())) + m.getName().substring(prefix.length() + 1);
+            String attrName = m.getName();
+            String methodPrefix = "";
+            if (prefix != null && !prefix.equals("") && attrName.startsWith(prefix)) {
+                attrName = Character.toUpperCase(attrName.charAt(prefix.length())) + attrName.substring(prefix.length() + 1);
+                methodPrefix = prefix;
+            }  else if (!MapProxy.METHOD_ADD.equals(attrName) && attrName.startsWith(MapProxy.METHOD_ADD)) {
+                attrName = Character.toUpperCase(attrName.charAt(MapProxy.METHOD_ADD.length())) + attrName.substring(MapProxy.METHOD_ADD.length() + 1);
+                methodPrefix = MapProxy.METHOD_ADD;
             }
-            Method setterMethod = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
-            Object[] value = null;
-            if (args[0] instanceof Object[]) {
-                value = new Object[]{ImmutableList.copyOf((Object[]) args[0])};
+            Method method = null;
+
+            if (methodPrefix.equals(MapProxy.METHOD_ADD)) {
+                method = ReflectionUtil.findAdder(newInstance.getClass(), attrName);
             } else {
-                value = new Object[]{args[0]};
+                method = ReflectionUtil.findSetter(newInstance.getClass(), attrName);
             }
-            setterMethod.invoke(newInstance, value);
+
+            method.invoke(newInstance, args);
 
             return b;
         }

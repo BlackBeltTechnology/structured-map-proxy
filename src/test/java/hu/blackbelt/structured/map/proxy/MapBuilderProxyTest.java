@@ -136,6 +136,102 @@ public class MapBuilderProxyTest {
 
     }
 
+    @Test
+    public void testBuilderAdd() {
+
+        UserDetail userDetail1 = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("id1").note("note1").build();
+        UserDetail userDetail2 = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("id2").note("note2").build();
+        UserDetail userDetail3 = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("id3").note("note3").build();
+        UserDetail userDetail4 = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("id4").note("note4").build();
+
+        User user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+                .id("1")
+                .active(true)
+                .loginName("teszt")
+                .addToUserDetails(userDetail1)
+                .build();
+
+        assertEquals(1, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id1")).count());
+
+        user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+                .id("1")
+                .active(true)
+                .loginName("teszt")
+                .addToUserDetails(userDetail2, userDetail3)
+                .build();
+
+        assertEquals(2, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id3")).count());
+
+        user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+                .id("1")
+                .active(true)
+                .loginName("teszt")
+                .addToUserDetails(userDetail2, userDetail2)
+                .build();
+
+        assertEquals(2, user.getUserDetails().size());
+        assertEquals(2, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id2")).count());
+
+        user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+                .id("1")
+                .active(true)
+                .loginName("teszt")
+                .addToUserDetails(userDetail2)
+                .addToUserDetails(userDetail2)
+                .build();
+
+        assertEquals(2, user.getUserDetails().size());
+        assertEquals(2, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id2")).count());
+
+        user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+                .id("1")
+                .active(true)
+                .loginName("teszt")
+                .addToUserDetails(userDetail1)
+                .addToUserDetails(userDetail2)
+                .addToUserDetails(userDetail3)
+                .build();
+
+        assertEquals(3, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id3")).count());
+
+        user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+                .id("1")
+                .active(true)
+                .loginName("teszt")
+                .userDetails(List.of(userDetail1, userDetail2))
+                .addToUserDetails(userDetail3, userDetail4)
+                .build();
+
+        assertEquals(4, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id3")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id3")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id4")).count());
+
+        user = MapBuilderProxy.builder(UserBuilder.class, User.class).newInstance()
+                .id("1")
+                .active(true)
+                .loginName("teszt")
+                .userDetails(List.of(userDetail1, userDetail2))
+                .addToUserDetails(userDetail3)
+                .addToUserDetails(userDetail4)
+                .build();
+
+        assertEquals(4, user.getUserDetails().size());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id1")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id2")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id3")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id3")).count());
+        assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id4")).count());
+    }
+
     <T> T getMapHolderValue(Object input, Object key, Class<T> target) {
         return (T) ((MapHolder) input).toMap().get(key);
     }
