@@ -635,6 +635,15 @@ public class MapProxyTest {
         assertMapStructure(map);
     }
 
+    @Test
+    public void testSetWithFormat() {
+        UserDetail userDetail = MapProxy.builder(UserDetail.class).newInstance();
+        userDetail.setId("1");
+        userDetail.setNote("Note%d", 1);
+
+        assertEquals("Note1", userDetail.getNote());
+    }
+
     <T> T getMapHolderValue(Object input, Object key, Class<T> target) {
         return (T) ((MapHolder) input).toMap().get(key);
     }
