@@ -28,11 +28,11 @@ public interface UserDetail {
     @Key(name = "__id")
     String getId();
 
-    void setId(String id);
+    void setId(String id, Object... args);
 
     String getNote();
 
-    void setNote(String note);
+    void setNote(String note, Object... args);
 
     static boolean equals(UserDetail o1, Object o2) {
         if (o2 == null) {

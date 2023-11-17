@@ -689,6 +689,26 @@ public class MapProxyTest {
         assertMapStructure(map);
     }
 
+    @Test
+    public void testSetWithStringSubstitution() {
+        UserDetail userDetail = MapProxy.builder(UserDetail.class).newInstance();
+        userDetail.setId("1");
+        userDetail.setNote("Note%d");
+
+        assertEquals("Note%d", userDetail.getNote());
+
+        userDetail.setId("2");
+        userDetail.setNote("Note%d", 1);
+
+        assertEquals("Note1", userDetail.getNote());
+
+        userDetail.setId("%d", 3);
+        userDetail.setNote("%s %d", "Note", 1);
+
+        assertEquals("Note 1", userDetail.getNote());
+        assertEquals("3", userDetail.getId());
+    }
+
     <T> T getMapHolderValue(Object input, Object key, Class<T> target) {
         return (T) ((MapHolder) input).toMap().get(key);
     }
