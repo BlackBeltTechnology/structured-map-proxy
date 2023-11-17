@@ -28,7 +28,7 @@ public interface UserDetail {
     @Key(name = "__id")
     String getId();
 
-    void setId(String id);
+    void setId(String id, Object... args);
 
     String getNote();
 

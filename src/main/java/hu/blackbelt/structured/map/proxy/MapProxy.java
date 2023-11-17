@@ -791,9 +791,10 @@ public final class MapProxy implements InvocationHandler {
         String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
         Object value = args[0];
 
-
-
-        if (value instanceof String && args.length > 1 && args[1] instanceof Object[]) {
+        if (value instanceof String
+                && args.length > 1
+                && args[1] instanceof Object[]
+                && ((Object[]) args[1]).length > 0) {
             value = String.format((String) value,(Object[]) args[1]);
         }
 
