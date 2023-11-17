@@ -232,6 +232,29 @@ public class MapBuilderProxyTest {
         assertEquals(1, user.getUserDetails().stream().filter(userDetail -> userDetail.getId().equals("id4")).count());
     }
 
+    @Test
+    void testWithWithStringSubstitution() {
+        UserDetail userDetail = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("1").note("Note %d").build();
+
+        assertEquals("1", userDetail.getId());
+        assertEquals("Note %d", userDetail.getNote());
+
+        userDetail = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("2").note("Note %d", 2).build();
+
+        assertEquals("2", userDetail.getId());
+        assertEquals("Note 2", userDetail.getNote());
+
+        userDetail = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("%d", 3).note("%s %d",  "Note", 3).build();
+
+        assertEquals("3", userDetail.getId());
+        assertEquals("Note 3", userDetail.getNote());
+
+        userDetail = MapBuilderProxy.builder(UserDetailBuilder.class, UserDetail.class).newInstance().id("%d", 4).note("%s %.2f %d",  "Note", 2.34,  4).build();
+
+        assertEquals("4", userDetail.getId());
+        assertEquals("Note 2.34 4", userDetail.getNote());
+    }
+
     <T> T getMapHolderValue(Object input, Object key, Class<T> target) {
         return (T) ((MapHolder) input).toMap().get(key);
     }
