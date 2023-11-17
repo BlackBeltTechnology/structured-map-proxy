@@ -697,13 +697,11 @@ public class MapProxyTest {
 
         assertEquals("Note%d", userDetail.getNote());
 
-        userDetail = MapProxy.builder(UserDetail.class).newInstance();
         userDetail.setId("2");
         userDetail.setNote("Note%d", 1);
 
         assertEquals("Note1", userDetail.getNote());
 
-        userDetail = MapProxy.builder(UserDetail.class).newInstance();
         userDetail.setId("%d", 3);
         userDetail.setNote("%s %d", "Note", 1);
 
