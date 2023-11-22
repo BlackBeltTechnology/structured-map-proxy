@@ -789,7 +789,15 @@ public final class MapProxy implements InvocationHandler {
             throw new IllegalStateException("Could not call set on immutable object");
         }
         String attrName = Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
-        final Object value = args[0];
+        Object value = args[0];
+
+        if (value instanceof String
+                && args.length > 1
+                && args[1] instanceof Object[]
+                && ((Object[]) args[1]).length > 0) {
+            value = String.format((String) value,(Object[]) args[1]);
+        }
+
         AttributeInfo attributeInfo = typeInfoCache.get(clazz).get(attrName);
         if (attributeInfo == null || !attributeInfo.isComposite()) {
             internal.put(getKeyName(clazz, attrName), value);
