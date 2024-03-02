@@ -20,15 +20,12 @@ package hu.blackbelt.structured.map.proxy;
  * #L%
  */
 
-import hu.blackbelt.structured.map.proxy.annotation.Key;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getInterfacesWithNoDescendants;
@@ -143,9 +140,6 @@ public final class MapBuilderProxy<B, T> implements InvocationHandler {
             B b = MapBuilderProxy.builder(builderClass, targetClass).withParams(params).withBuilderMethodPrefix(prefix).withTargetInstance(newInstance).newInstance();
 
             String attrName = m.getName();
-            if (m.getDeclaredAnnotation(Key.class) != null) {
-                attrName = m.getDeclaredAnnotation(Key.class).name();
-            }
             String methodPrefix = "";
             if (prefix != null && !prefix.equals("") && attrName.startsWith(prefix)) {
                 attrName = Character.toUpperCase(attrName.charAt(prefix.length())) + attrName.substring(prefix.length() + 1);
