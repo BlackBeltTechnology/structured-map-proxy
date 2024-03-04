@@ -211,6 +211,8 @@ public final class MapProxy implements InvocationHandler {
 
                 if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class) != null) {
                     mapKey = propertyDescriptor.getReadMethod().getDeclaredAnnotation(Key.class).name();
+                } else if (propertyDescriptor.getWriteMethod() != null && propertyDescriptor.getWriteMethod().getDeclaredAnnotation(Key.class) != null) {
+                    mapKey = propertyDescriptor.getWriteMethod().getDeclaredAnnotation(Key.class).name();
                 }
 
                 targetTypes.put(attrName, new AttributeInfo(mapKey, propertyType, parametrizedType.orElse(null), propertyDescriptor, composite));

@@ -20,15 +20,12 @@ package hu.blackbelt.structured.map.proxy;
  * #L%
  */
 
-import com.google.common.collect.ImmutableList;
 import hu.blackbelt.structured.map.proxy.util.ReflectionUtil;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static hu.blackbelt.structured.map.proxy.util.MapBuilderProxyUtil.getInterfacesWithNoDescendants;
