@@ -196,7 +196,7 @@ public final class MapProxy implements InvocationHandler {
             }
 
             for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
-                String attrName = propertyDescriptor.getName();
+                String attrName = Character.toLowerCase(propertyDescriptor.getName().charAt(0)) + propertyDescriptor.getName().substring(1);
                 final Class propertyType = propertyDescriptor.getPropertyType();
                 Optional<ParameterizedType> parametrizedType = getGetterOrSetterParameterizedType(propertyDescriptor);
 
