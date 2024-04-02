@@ -4,7 +4,7 @@
     <groupId>hu.blackbelt</groupId>
     <artifactId>structured-map-proxy</artifactId>
     <version>${revision}</version>
-    <packaging>bundle</packaging>
+    <packaging>jar</packaging>
 
     <name>Structured map proxy</name>
     <description>Structured map proxty implementation</description>
@@ -307,24 +307,24 @@
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
 
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-bundle-plugin</artifactId>
-                <extensions>true</extensions>
-                <configuration>
-                    <obrRepository>NONE</obrRepository>
-                    <instructions>
-                        <Export-Package>
-                            hu.blackbelt.structured.map.proxy.*;version=${project.version}
-                        </Export-Package>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.felix</groupId>-->
+<!--                <artifactId>maven-bundle-plugin</artifactId>-->
+<!--                <extensions>true</extensions>-->
+<!--                <configuration>-->
+<!--                    <obrRepository>NONE</obrRepository>-->
+<!--                    <instructions>-->
+<!--                        <Export-Package>-->
+<!--                            hu.blackbelt.structured.map.proxy.*;version=${project.version}-->
+<!--                        </Export-Package>-->
 
-                        <Import-Package>
-                            ${osgi-default-import},
-                            *
-                        </Import-Package>
-                    </instructions>
-                </configuration>
-            </plugin>
+<!--                        <Import-Package>-->
+<!--                            ${osgi-default-import},-->
+<!--                            *-->
+<!--                        </Import-Package>-->
+<!--                    </instructions>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
