@@ -314,9 +314,9 @@
                 <configuration>
                     <obrRepository>NONE</obrRepository>
                     <instructions>
-                        <Export-Package>
-                            hu.blackbelt.structured.map.proxy.*;version=${project.version}
-                        </Export-Package>
+<!--                        <Export-Package>-->
+<!--                            hu.blackbelt.structured.map.proxy.*;version=${project.version}-->
+<!--                        </Export-Package>-->
 
                         <Import-Package>
                             ${osgi-default-import},
