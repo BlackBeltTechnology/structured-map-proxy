@@ -57,6 +57,7 @@ wercker.env
 **/GSModel.log*
 .release
 **/.flattened-pom.xml
-
-
-
+.claude
+.gemini
+.opencode
+.agent
