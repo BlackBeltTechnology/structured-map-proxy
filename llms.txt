@@ -1,0 +1,40 @@
+# Structured Map Proxy
+
+> A Java library that creates type-safe JDK proxy interfaces backed by `java.util.Map` instances, enabling typed API access over dynamic map-based data structures.
+
+Key facts:
+- Java 21, single-artifact Maven project (OSGi bundle)
+- Build: Maven 3.9.4 with Maven Wrapper (`./mvnw`), CI-friendly versioning via `${revision}`
+- Core dependency: Google Guava (caching, name conversion, immutable collections)
+- Test stack: JUnit 5, Hamcrest, Mockito, JaCoCo coverage
+- OSGi-ready bundle exporting `hu.blackbelt.structured.map.proxy.*`
+- License: Apache License 2.0
+
+## Docs
+
+- [README.md](README.md): Library overview, usage examples, Mermaid diagrams, and API reference
+- [AGENTS.md](AGENTS.md): Developer guide — project structure, build commands, technology stack, and coding conventions
+- [CONTRIBUTING.md](CONTRIBUTING.md): Development setup and contribution guidelines
+- [.github/CIFLOW.md](.github/CIFLOW.md): CI/CD pipeline and branch strategy documentation
+
+## Core Components
+
+- [src/main/java/hu/blackbelt/structured/map/proxy/MapProxy.java](src/main/java/hu/blackbelt/structured/map/proxy/MapProxy.java): Core InvocationHandler — intercepts interface method calls and routes them to the backing map
+- [src/main/java/hu/blackbelt/structured/map/proxy/MapBuilderProxy.java](src/main/java/hu/blackbelt/structured/map/proxy/MapBuilderProxy.java): Builder-pattern proxy — wraps a target type with a fluent builder interface
+- [src/main/java/hu/blackbelt/structured/map/proxy/MapHolder.java](src/main/java/hu/blackbelt/structured/map/proxy/MapHolder.java): Contract implemented by all proxies — exposes toMap(), adaptTo(), and internal map access
+- [src/main/java/hu/blackbelt/structured/map/proxy/MapProxyParams.java](src/main/java/hu/blackbelt/structured/map/proxy/MapProxyParams.java): Configuration container — immutable, nullSafeCollection, enumMappingMethod settings
+- [src/main/java/hu/blackbelt/structured/map/proxy/CompositeClassLoader.java](src/main/java/hu/blackbelt/structured/map/proxy/CompositeClassLoader.java): Custom ClassLoader that delegates to multiple parent class loaders
+
+## Annotations & Utilities
+
+- [src/main/java/hu/blackbelt/structured/map/proxy/annotation/Key.java](src/main/java/hu/blackbelt/structured/map/proxy/annotation/Key.java): Annotation to map a getter to a custom map key name
+- [src/main/java/hu/blackbelt/structured/map/proxy/annotation/Embedded.java](src/main/java/hu/blackbelt/structured/map/proxy/annotation/Embedded.java): Annotation to flatten a nested interface's fields into the parent map level
+- [src/main/java/hu/blackbelt/structured/map/proxy/util/ReflectionUtil.java](src/main/java/hu/blackbelt/structured/map/proxy/util/ReflectionUtil.java): Finds getter/setter/adder methods via reflection and Guava CaseFormat
+- [src/main/java/hu/blackbelt/structured/map/proxy/util/MapBuilderProxyUtil.java](src/main/java/hu/blackbelt/structured/map/proxy/util/MapBuilderProxyUtil.java): Interface hierarchy analysis for builder proxies
+
+## Optional
+
+- [pom.xml](pom.xml): Maven build definition — dependencies, plugins, OSGi bundle config, profiles
+- [.github/workflows/build.yml](.github/workflows/build.yml): Main CI/CD pipeline — build, test, deploy, release
+- [.github/workflows/release.yml](.github/workflows/release.yml): Manual release workflow
+- [LICENSE.txt](LICENSE.txt): Apache License 2.0 full text
